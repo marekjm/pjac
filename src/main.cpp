@@ -617,6 +617,8 @@ vector<string>::size_type processVariable(const vector<string>& tokens, vector<s
         }
     } else if (tokens[i] == "=") {
         var_value = tokens[++i];
+        // skip terminating ";"
+        ++i;
     }
     variable_values[var_name] = var_value;
 
