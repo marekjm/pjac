@@ -413,7 +413,8 @@ namespace support {
             ostringstream token;
             string::size_type i = 0;
 
-            char c;
+            char c; // for by-character extraction
+            string tk; // for string extraction
             while (i < s.size()) {
                 c = s[i];
                 switch (c) {
@@ -433,6 +434,26 @@ namespace support {
                     case '}':
                     case '<':
                     case '>':
+                    case '~':
+                    case '!':
+                    case '@':
+                    case '#':
+                    case '$':
+                    case '%':
+                    case '^':
+                    case '&':
+                    case '*':
+                    case '-':
+                    case '+':
+                    case '=':
+                    case '|':
+                    case '\\':
+                    case ':':
+                    case ';':
+                    case ',':
+                    case '.':
+                    case '?':
+                    case '/':
                         if (token.str().size() != 0) {
                             tokens.push_back(token.str());
                             token.str("");
@@ -440,6 +461,16 @@ namespace support {
                         token << c;
                         tokens.push_back(token.str());
                         token.str("");
+                        break;
+                    case '"':
+                    case '\'':
+                        if (token.str().size() != 0) {
+                            tokens.push_back(token.str());
+                            token.str("");
+                        }
+                        tk = support::str::extract(s.substr(i));
+                        i += tk.size();
+                        tokens.push_back(tk);
                         break;
                     default:
                         token << c;
