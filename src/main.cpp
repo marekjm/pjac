@@ -5,6 +5,7 @@
 #include <map>
 #include <sstream>
 #include <fstream>
+#include <algorithm>
 using namespace std;
 
 
@@ -592,6 +593,49 @@ vector<string> mapStringVector(const vector<string>& sv, string(*fn)(const strin
     return mapped;
 }
 
+vector<string>::size_type processVariable(const vector<string>& tokens, vector<string>::size_type offset, map<string, unsigned>& variable_registers, map<string, string>& variable_types, map<string, string>& variable_values) {
+    vector<string>::size_type i = offset;
+    string var_name = "", var_type = "", var_value = "";
+    unsigned var_register = 0;
+
+    var_type = tokens[i];
+    var_name = tokens[++i];
+    var_register = variable_registers.size();
+
+    variable_registers[var_name] = var_register;
+    variable_types[var_name] = var_type;
+
+    ++i;
+
+    if (tokens[i] == ";") {
+        if (var_type == "int") {
+            var_value = "0";
+        } else if (var_type == "string") {
+            var_value = "''";
+        } else if (var_type == "float") {
+            var_value = "0.0";
+        }
+    } else if (tokens[i] == "=") {
+        var_value = tokens[++i];
+    }
+    variable_values[var_name] = var_value;
+
+    if (variable_registers.count(var_value)) {
+        cout << "    copy " << var_register << ' ' << variable_registers[var_value] << endl;
+    } else {
+        cout << "    ";
+        if (var_type == "int") {
+            cout << "istore";
+        } else if (var_type == "string") {
+            cout << "strstore";
+        } else if (var_type == "float") {
+            cout << "fstore";
+        }
+        cout << ' ' << var_register << ' ' << var_value << endl;
+    }
+
+    return (i-offset);
+}
 
 vector<string>::size_type processFunction(const vector<string>& tokens, vector<string>::size_type offset) {
     vector<string>::size_type number_of_processed_tokens = 0;
@@ -599,9 +643,21 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
     string function_name = tokens[offset + (number_of_processed_tokens++)];
     map<string, unsigned> variable_registers;
     map<string, string> variable_types;
+    map<string, string> variable_values;
+
+    bool has_returned = false;
 
     cout << ".function: " << function_name << endl;
-    cout << "    end" << endl;
+
+    for (; number_of_processed_tokens+offset < tokens.size(); ++number_of_processed_tokens) {
+        if (tokens[offset+number_of_processed_tokens] == "var") {
+            number_of_processed_tokens += processVariable(tokens, (offset + (++number_of_processed_tokens)), variable_registers, variable_types, variable_values);
+        }
+    }
+
+    if (not has_returned) {
+        cout << "    end" << endl;
+    }
     cout << ".end" << endl;
 
     return number_of_processed_tokens;
@@ -653,12 +709,6 @@ int main(int argc, char **argv) {
 
     vector<string> primitive_tokens = support::str::tokenize(source_text);
     vector<string> decommented_tokens = removeComments(primitive_tokens);
-
-    cout << "token count [primitive]: " << primitive_tokens.size() << endl;
-    cout << "token count [decommented]: " << decommented_tokens.size() << endl;
-    cout << support::str::join(" ", mapStringVector(decommented_tokens, &support::str::strencode)) << endl;
-
-    cout << "\n\n-------- 8< --------\n\n" << endl;
 
     processSource(decommented_tokens);
 
