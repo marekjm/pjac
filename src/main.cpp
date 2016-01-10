@@ -517,6 +517,14 @@ vector<string> removeComments(const vector<string>& tks) {
     for (vector<string>::size_type i = 0; i < tks.size(); ++i) {
         token = tks[i];
 
+        if (token == "/" and previous_token == "/") {
+            // double-slash comments go until the first newline
+            while (tks[++i] != "\n");
+            // last pushed token has to be removed as it is the starting "/"
+            tokens.pop_back();
+            continue;
+        }
+
         previous_token = token;
         tokens.push_back(token);
     }
