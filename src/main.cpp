@@ -639,6 +639,43 @@ vector<string>::size_type processVariable(const vector<string>& tokens, vector<s
     return (i-offset);
 }
 
+vector<string>::size_type processFrame(const vector<string>& tokens, const string& function_to_call, vector<string>::size_type offset, map<string, unsigned>& variable_registers) {
+    vector<string>::size_type i = offset;
+    vector<unsigned> parameter_sources;
+
+    if (tokens[i] == ")") {
+        cout << "    frame 0" << endl;
+        cout << "    call 0 " << function_to_call << endl;
+        return 2; // number of processed tokens is 2: "(" and ";"
+    }
+
+    for (; i < tokens.size() and tokens[i] != ";"; ++i) {
+        if (variable_registers.count(tokens[i]) == 0) {
+            cout << "fatal: undefined name as parameter: `" << tokens[i] << "` in call to function `" << function_to_call << '`' << endl;
+            exit(1);
+        }
+        parameter_sources.push_back(variable_registers.at(tokens[i]));
+        // account for both "," between parameters and
+        // closing ")"
+        ++i;
+    }
+
+    cout << "    frame ^[";
+    for (unsigned j = 0; j < parameter_sources.size(); ++j) {
+        cout << "(param " << j << ' ' << parameter_sources[j] << ')';
+        if (j < (parameter_sources.size()-1)) {
+            cout << ' ';
+        }
+    }
+    cout << "]" << endl;
+    cout << "    call 0 " << function_to_call << endl;
+
+    // skip terminating ";"
+    ++i;
+
+    return (i-offset);
+}
+
 vector<string>::size_type processFunction(const vector<string>& tokens, vector<string>::size_type offset) {
     vector<string>::size_type number_of_processed_tokens = 0;
 
@@ -684,6 +721,13 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
                 cout << "fatal: invalid source code" << endl;
                 cout << "note: first unprocessable token: `" << support::str::strencode(tokens[offset+number_of_processed_tokens]) << '`' << endl;
                 exit(1);
+            } else if (tokens[offset+number_of_processed_tokens+1] == "(") {
+                string function_to_call = tokens[offset + (number_of_processed_tokens++)];
+                // skip opening "("
+                ++number_of_processed_tokens;
+                number_of_processed_tokens += processFrame(tokens, function_to_call, (offset+number_of_processed_tokens), variable_registers);
+            } else {
+                cout << "    ; unprocessed token: " << tokens[offset+number_of_processed_tokens] << endl;
             }
         }
     }
