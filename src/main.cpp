@@ -409,6 +409,47 @@ namespace support {
             }
             return decoded.str();
         }
+        string strencode(const string& s) {
+            /** Encode escape sequences in strings.
+             *
+             *  Reverse of strdecode() function.
+             */
+            ostringstream encoded;
+            char c;
+            for (unsigned i = 0; i < s.size(); ++i) {
+                c = s[i];
+                switch (s[i]) {
+                    case '\\':
+                        encoded << "\\\\";
+                        break;
+                    case '\a':
+                        encoded << "\\a";
+                        break;
+                    case '\b':
+                        encoded << "\\b";
+                        break;
+                    case '\f':
+                        encoded << "\\f";
+                        break;
+                    case '\n':
+                        encoded << "\\n";
+                        break;
+                    case '\r':
+                        encoded << "\\r";
+                        break;
+                    case '\t':
+                        encoded << "\\t";
+                        break;
+                    case '\v':
+                        encoded << "\\v";
+                        break;
+                    default:
+                        encoded << c;
+                        break;
+                }
+            }
+            return encoded.str();
+        }
 
         string stringify(const vector<string>& sv) {
             ostringstream oss;
