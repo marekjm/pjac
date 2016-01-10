@@ -613,13 +613,13 @@ int main(int argc, char **argv) {
     }
 
     string source_text = support::io::readfile(filename);
+
     vector<string> primitive_tokens = support::str::tokenize(source_text);
     vector<string> decommented_tokens = removeComments(primitive_tokens);
 
     cout << "token count [primitive]: " << primitive_tokens.size() << endl;
     cout << "token count [decommented]: " << decommented_tokens.size() << endl;
-
-    cout << support::str::join(" ", decommented_tokens) << endl;
+    cout << support::str::join(" ", mapStringVector(decommented_tokens, &support::str::strencode)) << endl;
 
     return 0;
 }
