@@ -500,6 +500,10 @@ namespace support {
                 ++i;
             }
 
+            if (token.str().size()) {
+                tokens.push_back(token.str());
+            }
+
             return tokens;
         }
     }
