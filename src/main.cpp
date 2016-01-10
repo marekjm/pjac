@@ -668,7 +668,6 @@ vector<string>::size_type processFrame(const vector<string>& tokens, const strin
         }
     }
     cout << "]" << endl;
-    cout << "    call 0 " << function_to_call << endl;
 
     // skip terminating ";"
     ++i;
@@ -680,7 +679,26 @@ vector<string>::size_type processCall(const vector<string>& tokens, vector<strin
     string function_to_call = tokens[offset++];
     // skip opening "("
     ++offset;
-    return (processFrame(tokens, function_to_call, offset, variable_registers) + 2);
+    vector<string>::size_type i = (processFrame(tokens, function_to_call, offset, variable_registers) + 2);
+    cout << "    call 0 " << function_to_call << endl;
+
+    return i;
+}
+vector<string>::size_type processCallWithReturnValueUsed(const vector<string>& tokens, vector<string>::size_type offset, map<string, unsigned>& variable_registers) {
+    string return_to = tokens[offset++];
+
+    // skip "="
+    ++offset;
+
+    string function_to_call = tokens[offset++];
+
+    // skip opening "("
+    ++offset;
+
+    vector<string>::size_type i = (processFrame(tokens, function_to_call, offset, variable_registers) + 4);
+    cout << "    call " << variable_registers.at(return_to) << ' ' << function_to_call << endl;
+
+    return i;
 }
 
 vector<string>::size_type processFunction(const vector<string>& tokens, vector<string>::size_type offset) {
@@ -730,6 +748,8 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
                 exit(1);
             } else if (tokens[offset+number_of_processed_tokens+1] == "(") {
                 number_of_processed_tokens += processCall(tokens, (offset + number_of_processed_tokens), variable_registers);
+            } else if (variable_registers.count(tokens[offset+number_of_processed_tokens]) and tokens[offset+number_of_processed_tokens+1] == "=" and tokens[offset+number_of_processed_tokens+3] == "(") {
+                number_of_processed_tokens += processCallWithReturnValueUsed(tokens, (offset+number_of_processed_tokens), variable_registers);
             } else {
                 cout << "    ; unprocessed token: " << tokens[offset+number_of_processed_tokens] << endl;
             }
