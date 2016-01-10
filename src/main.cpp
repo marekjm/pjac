@@ -571,9 +571,7 @@ vector<string> removeComments(const vector<string>& tks) {
             tokens.pop_back();
             // skip the "*" of comment opening
             ++i;
-            while (++i < tks.size() and not (tks[i-1] == "*" and tks[i] == "/")) {
-                cout << i << ' ' << support::str::strencode(tks[i]) << ' ' << support::str::strencode(tks[i+1]) << endl;
-            }
+            while (++i < tks.size() and not (tks[i-1] == "*" and tks[i] == "/"));
             continue;
         }
 
