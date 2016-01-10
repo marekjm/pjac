@@ -655,7 +655,13 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
         } else if (tokens[offset+number_of_processed_tokens] == "return") {
             has_returned = true;
             if (tokens[offset + (++number_of_processed_tokens)] != ";") {
-                if (variable_registers[tokens[offset+number_of_processed_tokens]] != 0) {
+                if (support::str::isnum(tokens[offset+number_of_processed_tokens])) {
+                    if (tokens[offset+number_of_processed_tokens] == "0") {
+                        cout << "    izero 0" << endl;
+                    } else {
+                        cout << "    istore 0 " << tokens[offset+number_of_processed_tokens] << endl;
+                    }
+                } else if (variable_registers[tokens[offset+number_of_processed_tokens]] != 0) {
                     cout << "    move 0 " << variable_registers[tokens[offset+number_of_processed_tokens]] << endl;
                 }
             }
