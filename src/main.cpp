@@ -574,6 +574,15 @@ vector<string> removeComments(const vector<string>& tks) {
 }
 
 
+vector<string> mapStringVector(const vector<string>& sv, string(*fn)(const string&)) {
+    vector<string> mapped;
+    for (vector<string>::size_type i = 0; i < sv.size(); ++i) {
+        mapped.push_back(fn(sv[i]));
+    }
+    return mapped;
+}
+
+
 int main(int argc, char **argv) {
     // setup command line arguments vector
     vector<string> args;
