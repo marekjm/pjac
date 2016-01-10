@@ -114,7 +114,7 @@ namespace support {
                 };
                 ++i;
             }
-            return support::str::sub(s, i);
+            return sub(s, i);
         }
 
         string chunk(const string& s, bool ignore_leading_ws = true) {
