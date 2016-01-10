@@ -513,10 +513,12 @@ namespace support {
 vector<string> removeComments(const vector<string>& tks) {
     vector<string> tokens;
 
-    string token, previous_token;
+    string token = "", previous_token = "";
     for (vector<string>::size_type i = 0; i < tks.size(); ++i) {
         token = tks[i];
+
         previous_token = token;
+        tokens.push_back(token);
     }
 
     return tokens;
