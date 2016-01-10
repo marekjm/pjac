@@ -593,7 +593,7 @@ vector<string> mapStringVector(const vector<string>& sv, string(*fn)(const strin
     return mapped;
 }
 
-vector<string>::size_type processVariable(const vector<string>& tokens, vector<string>::size_type offset, map<string, unsigned>& variable_registers, map<string, string>& variable_types, map<string, string>& variable_values) {
+vector<string>::size_type processVariable(const vector<string>& tokens, vector<string>::size_type offset, map<string, unsigned>& variable_registers, map<string, string>& variable_types, map<string, string>& variable_values, ofstream& output) {
     vector<string>::size_type i = offset;
     string var_name = "", var_type = "", var_value = "";
     unsigned var_register = 0;
@@ -623,28 +623,28 @@ vector<string>::size_type processVariable(const vector<string>& tokens, vector<s
     variable_values[var_name] = var_value;
 
     if (variable_registers.count(var_value)) {
-        cout << "    copy " << var_register << ' ' << variable_registers[var_value] << endl;
+        output << "    copy " << var_register << ' ' << variable_registers[var_value] << endl;
     } else {
-        cout << "    ";
+        output << "    ";
         if (var_type == "int") {
-            cout << "istore";
+            output << "istore";
         } else if (var_type == "string") {
-            cout << "strstore";
+            output << "strstore";
         } else if (var_type == "float") {
-            cout << "fstore";
+            output << "fstore";
         }
-        cout << ' ' << var_register << ' ' << var_value << endl;
+        output << ' ' << var_register << ' ' << var_value << endl;
     }
 
     return (i-offset);
 }
 
-vector<string>::size_type processFrame(const vector<string>& tokens, const string& function_to_call, vector<string>::size_type offset, map<string, unsigned>& variable_registers) {
+vector<string>::size_type processFrame(const vector<string>& tokens, const string& function_to_call, vector<string>::size_type offset, map<string, unsigned>& variable_registers, ofstream& output) {
     vector<string>::size_type i = offset;
     vector<unsigned> parameter_sources;
 
     if (tokens[i] == ")") {
-        cout << "    frame 0" << endl;
+        output << "    frame 0" << endl;
         return 2; // number of processed tokens is 2: "(" and ";"
     }
 
@@ -659,14 +659,14 @@ vector<string>::size_type processFrame(const vector<string>& tokens, const strin
         ++i;
     }
 
-    cout << "    frame ^[";
+    output << "    frame ^[";
     for (unsigned j = 0; j < parameter_sources.size(); ++j) {
-        cout << "(param " << j << ' ' << parameter_sources[j] << ')';
+        output << "(param " << j << ' ' << parameter_sources[j] << ')';
         if (j < (parameter_sources.size()-1)) {
-            cout << ' ';
+            output << ' ';
         }
     }
-    cout << "]" << endl;
+    output << "]" << endl;
 
     // skip terminating ";"
     ++i;
@@ -674,16 +674,16 @@ vector<string>::size_type processFrame(const vector<string>& tokens, const strin
     return (i-offset);
 }
 
-vector<string>::size_type processCall(const vector<string>& tokens, vector<string>::size_type offset, map<string, unsigned>& variable_registers) {
+vector<string>::size_type processCall(const vector<string>& tokens, vector<string>::size_type offset, map<string, unsigned>& variable_registers, ofstream& output) {
     string function_to_call = tokens[offset++];
     // skip opening "("
     ++offset;
-    vector<string>::size_type i = (processFrame(tokens, function_to_call, offset, variable_registers) + 2);
-    cout << "    call 0 " << function_to_call << endl;
+    vector<string>::size_type i = (processFrame(tokens, function_to_call, offset, variable_registers, output) + 2);
+    output << "    call 0 " << function_to_call << endl;
 
     return i;
 }
-vector<string>::size_type processCallWithReturnValueUsed(const vector<string>& tokens, vector<string>::size_type offset, map<string, unsigned>& variable_registers) {
+vector<string>::size_type processCallWithReturnValueUsed(const vector<string>& tokens, vector<string>::size_type offset, map<string, unsigned>& variable_registers, ofstream& output) {
     string return_to = tokens[offset++];
 
     // skip "="
@@ -694,13 +694,13 @@ vector<string>::size_type processCallWithReturnValueUsed(const vector<string>& t
     // skip opening "("
     ++offset;
 
-    vector<string>::size_type i = (processFrame(tokens, function_to_call, offset, variable_registers) + 4);
-    cout << "    call " << variable_registers.at(return_to) << ' ' << function_to_call << endl;
+    vector<string>::size_type i = (processFrame(tokens, function_to_call, offset, variable_registers, output) + 4);
+    output << "    call " << variable_registers.at(return_to) << ' ' << function_to_call << endl;
 
     return i;
 }
 
-vector<string>::size_type processFunction(const vector<string>& tokens, vector<string>::size_type offset) {
+vector<string>::size_type processFunction(const vector<string>& tokens, vector<string>::size_type offset, ofstream& output) {
     vector<string>::size_type number_of_processed_tokens = 0;
 
     string function_name = tokens[offset + (number_of_processed_tokens++)];
@@ -710,32 +710,32 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
 
     bool has_returned = false;
 
-    cout << ".function: " << function_name << endl;
+    output << ".function: " << function_name << endl;
 
     for (; number_of_processed_tokens+offset < tokens.size(); ++number_of_processed_tokens) {
         if (tokens[offset+number_of_processed_tokens] == "var") {
-            number_of_processed_tokens += processVariable(tokens, (offset + (++number_of_processed_tokens)), variable_registers, variable_types, variable_values);
+            number_of_processed_tokens += processVariable(tokens, (offset + (++number_of_processed_tokens)), variable_registers, variable_types, variable_values, output);
         } else if (tokens[offset+number_of_processed_tokens] == "return") {
             has_returned = true;
             if (tokens[offset + (++number_of_processed_tokens)] != ";") {
                 if (support::str::isnum(tokens[offset+number_of_processed_tokens])) {
                     if (tokens[offset+number_of_processed_tokens] == "0") {
-                        cout << "    izero 0" << endl;
+                        output << "    izero 0" << endl;
                     } else {
-                        cout << "    istore 0 " << tokens[offset+number_of_processed_tokens] << endl;
+                        output << "    istore 0 " << tokens[offset+number_of_processed_tokens] << endl;
                     }
                 } else if (variable_registers[tokens[offset+number_of_processed_tokens]] != 0) {
-                    cout << "    move 0 " << variable_registers[tokens[offset+number_of_processed_tokens]] << endl;
+                    output << "    move 0 " << variable_registers[tokens[offset+number_of_processed_tokens]] << endl;
                 }
             }
-            cout << "    end" << endl;
+            output << "    end" << endl;
             ++number_of_processed_tokens;
         } else if (tokens[offset+number_of_processed_tokens] == "asm") {
-            cout << "    ";
+            output << "    ";
             while (tokens[offset + (++number_of_processed_tokens)] != ";") {
-                cout << tokens[offset+number_of_processed_tokens] << ' ';
+                output << tokens[offset+number_of_processed_tokens] << ' ';
             }
-            cout << endl;
+            output << endl;
         } else if (tokens[offset+number_of_processed_tokens] == "\n") {
             continue;
         } else if (tokens[offset+number_of_processed_tokens] == "end") {
@@ -746,30 +746,30 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
                 cout << "note: first unprocessable token: `" << support::str::strencode(tokens[offset+number_of_processed_tokens]) << '`' << endl;
                 exit(1);
             } else if (tokens[offset+number_of_processed_tokens+1] == "(") {
-                number_of_processed_tokens += processCall(tokens, (offset + number_of_processed_tokens), variable_registers);
+                number_of_processed_tokens += processCall(tokens, (offset + number_of_processed_tokens), variable_registers, output);
             } else if (variable_registers.count(tokens[offset+number_of_processed_tokens]) and tokens[offset+number_of_processed_tokens+1] == "=" and tokens[offset+number_of_processed_tokens+3] == "(") {
-                number_of_processed_tokens += processCallWithReturnValueUsed(tokens, (offset+number_of_processed_tokens), variable_registers);
+                number_of_processed_tokens += processCallWithReturnValueUsed(tokens, (offset+number_of_processed_tokens), variable_registers, output);
             } else {
-                cout << "    ; unprocessed token: " << tokens[offset+number_of_processed_tokens] << endl;
+                output << "    ; unprocessed token: " << tokens[offset+number_of_processed_tokens] << endl;
             }
         }
     }
 
     if (not has_returned) {
-        cout << "    end" << endl;
+        output << "    end" << endl;
     }
-    cout << ".end" << endl;
+    output << ".end" << endl;
 
     return number_of_processed_tokens;
 }
 
 
-void processSource(const vector<string>& tokens) {
+void processSource(const vector<string>& tokens, ofstream& output) {
     string previous_token = "", token = "";
     for (vector<string>::size_type i = 0; i < tokens.size(); ++i) {
         token = tokens[i];
         if (token == "function" and previous_token == "begin") {
-            i += processFunction(tokens, ++i);
+            i += processFunction(tokens, ++i, output);
         }
         previous_token = token;
     }
@@ -791,10 +791,6 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    if (compilename == "") {
-        compilename = "out.asm";
-    }
-
     filename = args[0];
     if (!filename.size()) {
         cout << "fatal: no file to assemble" << endl;
@@ -805,12 +801,17 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    if (compilename == "") {
+        compilename = (filename + ".asm");
+    }
+
     string source_text = support::io::readfile(filename);
 
     vector<string> primitive_tokens = support::str::tokenize(source_text);
     vector<string> decommented_tokens = removeComments(primitive_tokens);
 
-    processSource(decommented_tokens);
+    ofstream out(compilename);
+    processSource(decommented_tokens, out);
 
     return 0;
 }
