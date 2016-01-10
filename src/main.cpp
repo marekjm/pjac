@@ -565,6 +565,17 @@ vector<string> removeComments(const vector<string>& tks) {
             tokens.pop_back();
             continue;
         }
+        if (token == "*" and previous_token == "/") {
+            // block comments go from "/*" to "*/"
+            // last pushed token has to be removed as it is the starting "/"
+            tokens.pop_back();
+            // skip the "*" of comment opening
+            ++i;
+            while (++i < tks.size() and not (tks[i-1] == "*" and tks[i] == "/")) {
+                cout << i << ' ' << support::str::strencode(tks[i]) << ' ' << support::str::strencode(tks[i+1]) << endl;
+            }
+            continue;
+        }
 
         previous_token = token;
         tokens.push_back(token);
