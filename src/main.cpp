@@ -560,7 +560,7 @@ vector<string> removeComments(const vector<string>& tks) {
 
         if (token == "/" and previous_token == "/") {
             // double-slash comments go until the first newline
-            while (tks[++i] != "\n");
+            while (++i < tks.size() and tks[i] != "\n");
             // last pushed token has to be removed as it is the starting "/"
             tokens.pop_back();
             continue;
