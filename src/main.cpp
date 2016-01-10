@@ -410,9 +410,41 @@ namespace support {
 
         vector<string> tokenize(const string& s) {
             vector<string> tokens;
-
+            ostringstream token;
             string::size_type i = 0;
+
+            char c;
             while (i < s.size()) {
+                c = s[i];
+                switch (c) {
+                    case ' ':
+                    case '\t':
+                        if (token.str().size() != 0) {
+                            tokens.push_back(token.str());
+                            token.str("");
+                        }
+                        break;
+                    case '\n':
+                    case '(':
+                    case ')':
+                    case '[':
+                    case ']':
+                    case '{':
+                    case '}':
+                    case '<':
+                    case '>':
+                        if (token.str().size() != 0) {
+                            tokens.push_back(token.str());
+                            token.str("");
+                        }
+                        token << c;
+                        tokens.push_back(token.str());
+                        token.str("");
+                        break;
+                    default:
+                        token << c;
+                        break;
+                }
                 ++i;
             }
 
