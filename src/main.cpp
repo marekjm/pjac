@@ -2,6 +2,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <map>
 #include <sstream>
 #include <fstream>
 using namespace std;
@@ -592,6 +593,33 @@ vector<string> mapStringVector(const vector<string>& sv, string(*fn)(const strin
 }
 
 
+vector<string>::size_type processFunction(const vector<string>& tokens, vector<string>::size_type offset) {
+    vector<string>::size_type number_of_processed_tokens = 0;
+
+    string function_name = tokens[offset + (number_of_processed_tokens++)];
+    map<string, unsigned> variable_registers;
+    map<string, string> variable_types;
+
+    cout << ".function: " << function_name << endl;
+    cout << "    end" << endl;
+    cout << ".end" << endl;
+
+    return number_of_processed_tokens;
+}
+
+
+void processSource(const vector<string>& tokens) {
+    string previous_token = "", token = "";
+    for (vector<string>::size_type i = 0; i < tokens.size(); ++i) {
+        token = tokens[i];
+        if (token == "function" and previous_token == "begin") {
+            i += processFunction(tokens, ++i);
+        }
+        previous_token = token;
+    }
+}
+
+
 int main(int argc, char **argv) {
     // setup command line arguments vector
     vector<string> args;
@@ -629,6 +657,10 @@ int main(int argc, char **argv) {
     cout << "token count [primitive]: " << primitive_tokens.size() << endl;
     cout << "token count [decommented]: " << decommented_tokens.size() << endl;
     cout << support::str::join(" ", mapStringVector(decommented_tokens, &support::str::strencode)) << endl;
+
+    cout << "\n\n-------- 8< --------\n\n" << endl;
+
+    processSource(decommented_tokens);
 
     return 0;
 }
