@@ -388,6 +388,12 @@ namespace support {
 
         vector<string> tokenize(const string& s) {
             vector<string> tokens;
+
+            string::size_type i = 0;
+            while (i < s.size()) {
+                ++i;
+            }
+
             return tokens;
         }
     }
