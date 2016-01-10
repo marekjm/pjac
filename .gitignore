@@ -1,27 +1,15 @@
 *.o
 *.so
-
-*.bin
 *.out
-
-*.pdf
-
-*.vlib
 
 *~
 *\#
 
 .*
 
-build/assembler/*
-
-build/bin/vm/*
-build/bin/run/*
-
-tests/compiled/*
+build/bin/*
 
 tmp/*
-
 
 !.gitkeep
 !.gitignore
