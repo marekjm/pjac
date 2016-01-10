@@ -559,5 +559,7 @@ int main(int argc, char **argv) {
     cout << "token count [primitive]: " << primitive_tokens.size() << endl;
     cout << "token count [decommented]: " << decommented_tokens.size() << endl;
 
+    cout << support::str::join(" ", decommented_tokens) << endl;
+
     return 0;
 }
