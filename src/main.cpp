@@ -515,8 +515,9 @@ int main(int argc, char **argv) {
     }
 
     string source_text = support::io::readfile(filename);
+    vector<string> tokens = support::str::tokenize(source_text);
 
-    cout << support::str::join("\n", support::str::tokenize(source_text)) << endl;
+    cout << support::str::join("\n", tokens) << endl;
 
     return 0;
 }
