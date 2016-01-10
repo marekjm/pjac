@@ -424,5 +424,7 @@ int main(int argc, char **argv) {
     }
     vector<string> lines = support::io::readlines(filename);
 
+    cout << support::str::join("\n", lines) << endl;
+
     return 0;
 }
