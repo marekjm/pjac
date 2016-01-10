@@ -666,12 +666,23 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
                 }
             }
             cout << "    end" << endl;
+            ++number_of_processed_tokens;
         } else if (tokens[offset+number_of_processed_tokens] == "asm") {
             cout << "    ";
             while (tokens[offset + (++number_of_processed_tokens)] != ";") {
                 cout << tokens[offset+number_of_processed_tokens] << ' ';
             }
             cout << endl;
+        } else if (tokens[offset+number_of_processed_tokens] == "\n") {
+            continue;
+        } else if (tokens[offset+number_of_processed_tokens] == "end") {
+            break;
+        } else {
+            if ((offset+number_of_processed_tokens+3) >= tokens.size()) {
+                cout << "fatal: invalid source code" << endl;
+                cout << "note: first unprocessable token: `" << support::str::strencode(tokens[offset+number_of_processed_tokens]) << '`' << endl;
+                exit(1);
+            }
         }
     }
 
