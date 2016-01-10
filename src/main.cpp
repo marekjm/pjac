@@ -75,6 +75,28 @@ namespace support {
 
             return lines;
         }
+
+        string readfile(const string& filename) {
+            if (!support::env::isfile(filename)) {
+                throw NoSuchFile(filename);
+            }
+
+            ifstream in(filename, ios::in | ios::binary);
+            if (!in) {
+                throw ReadException(filename);
+            }
+
+            ostringstream text;
+            string line;
+            if (getline(in, line)) {
+                text << line;
+            }
+            while (getline(in, line)) {
+                text << '\n' << line;
+            }
+
+            return text.str();
+        }
     }
 
     namespace str {
@@ -428,9 +450,10 @@ int main(int argc, char **argv) {
         cout << "fatal: no such file: " << filename << endl;
         return 1;
     }
-    vector<string> lines = support::io::readlines(filename);
 
-    cout << support::str::join("\n", lines) << endl;
+    string source_text = support::io::readfile(filename);
+
+    cout << support::str::join("\n", support::str::tokenize(source_text)) << endl;
 
     return 0;
 }
