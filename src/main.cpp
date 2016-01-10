@@ -676,6 +676,13 @@ vector<string>::size_type processFrame(const vector<string>& tokens, const strin
     return (i-offset);
 }
 
+vector<string>::size_type processCall(const vector<string>& tokens, vector<string>::size_type offset, map<string, unsigned>& variable_registers) {
+    string function_to_call = tokens[offset++];
+    // skip opening "("
+    ++offset;
+    return (processFrame(tokens, function_to_call, offset, variable_registers) + 2);
+}
+
 vector<string>::size_type processFunction(const vector<string>& tokens, vector<string>::size_type offset) {
     vector<string>::size_type number_of_processed_tokens = 0;
 
@@ -722,10 +729,7 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
                 cout << "note: first unprocessable token: `" << support::str::strencode(tokens[offset+number_of_processed_tokens]) << '`' << endl;
                 exit(1);
             } else if (tokens[offset+number_of_processed_tokens+1] == "(") {
-                string function_to_call = tokens[offset + (number_of_processed_tokens++)];
-                // skip opening "("
-                ++number_of_processed_tokens;
-                number_of_processed_tokens += processFrame(tokens, function_to_call, (offset+number_of_processed_tokens), variable_registers);
+                number_of_processed_tokens += processCall(tokens, (offset + number_of_processed_tokens), variable_registers);
             } else {
                 cout << "    ; unprocessed token: " << tokens[offset+number_of_processed_tokens] << endl;
             }
