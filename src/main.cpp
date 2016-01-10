@@ -506,6 +506,12 @@ namespace support {
 }
 
 
+vector<string> removeComments(const vector<string>& tks) {
+    vector<string> tokens;
+    return tokens;
+}
+
+
 int main(int argc, char **argv) {
     // setup command line arguments vector
     vector<string> args;
@@ -536,9 +542,11 @@ int main(int argc, char **argv) {
     }
 
     string source_text = support::io::readfile(filename);
-    vector<string> tokens = support::str::tokenize(source_text);
+    vector<string> primitive_tokens = support::str::tokenize(source_text);
+    vector<string> decommented_tokens = removeComments(primitive_tokens);
 
-    cout << support::str::join("\n", tokens) << endl;
+    cout << "token count [primitive]: " << primitive_tokens.size() << endl;
+    cout << "token count [decommented]: " << decommented_tokens.size() << endl;
 
     return 0;
 }
