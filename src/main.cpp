@@ -666,6 +666,12 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
                 }
             }
             cout << "    end" << endl;
+        } else if (tokens[offset+number_of_processed_tokens] == "asm") {
+            cout << "    ";
+            while (tokens[offset + (++number_of_processed_tokens)] != ";") {
+                cout << tokens[offset+number_of_processed_tokens] << ' ';
+            }
+            cout << endl;
         }
     }
 
