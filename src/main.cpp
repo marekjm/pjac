@@ -645,7 +645,6 @@ vector<string>::size_type processFrame(const vector<string>& tokens, const strin
 
     if (tokens[i] == ")") {
         cout << "    frame 0" << endl;
-        cout << "    call 0 " << function_to_call << endl;
         return 2; // number of processed tokens is 2: "(" and ";"
     }
 
