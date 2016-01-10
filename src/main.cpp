@@ -40,6 +40,27 @@ class NoSuchFile: public ReadException {
 };
 
 
+class Token {
+    string::size_type line_number;
+    string::size_type character_number;
+    string::size_type byte_number;
+    string token_string;
+
+    public:
+        decltype(line_number) line() const { return line_number; }
+        decltype(character_number) character() const { return character_number; }
+        decltype(byte_number) byte() const { return byte_number; }
+        string text() const { return token_string; }
+
+        Token(const string& s, string::size_type ln, string::size_type cn, string::size_type bn):
+            line_number(ln),
+            character_number(cn),
+            byte_number(bn),
+            token_string(s) {
+            }
+};
+
+
 namespace support {
     namespace env {
         bool isfile(const string& path) {
