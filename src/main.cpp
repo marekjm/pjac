@@ -700,6 +700,18 @@ vector<string>::size_type processCallWithReturnValueUsed(const vector<string>& t
     return i;
 }
 
+void printBadLine(const vector<string>& tokens, vector<string>::size_type i) {
+    cout << "bad line:" << endl;
+    vector<string> line;
+    while (i > 0 and tokens[i] != "\n") {
+        --i;
+    }
+    while (++i < tokens.size() and tokens[i] != "\n") {
+        cout << tokens[i] << ' ';
+    }
+    cout << endl;
+}
+
 vector<string>::size_type processFunction(const vector<string>& tokens, vector<string>::size_type offset, ofstream& output) {
     vector<string>::size_type number_of_processed_tokens = 0;
 
@@ -752,7 +764,7 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
             break;
         } else {
             if ((offset+number_of_processed_tokens+3) >= tokens.size()) {
-                cout << "fatal: invalid source code" << endl;
+                cout << "fatal: invalid source code: missing tokens after call" << endl;
                 cout << "note: first unprocessable token: `" << support::str::strencode(tokens[offset+number_of_processed_tokens]) << '`' << endl;
                 exit(1);
             } else if (tokens[offset+number_of_processed_tokens+1] == "(") {
@@ -760,7 +772,10 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
             } else if (variable_registers.count(tokens[offset+number_of_processed_tokens]) and tokens[offset+number_of_processed_tokens+1] == "=" and tokens[offset+number_of_processed_tokens+3] == "(") {
                 number_of_processed_tokens += processCallWithReturnValueUsed(tokens, (offset+number_of_processed_tokens), variable_registers, output);
             } else {
-                output << "    ; unprocessed token: " << tokens[offset+number_of_processed_tokens] << endl;
+                cout << "fatal: invalid source code" << endl;
+                cout << "note: first unprocessable token: `" << support::str::strencode(tokens[offset+number_of_processed_tokens]) << '`' << endl;
+                printBadLine(tokens, (offset+number_of_processed_tokens));
+                exit(1);
             }
         }
     }
