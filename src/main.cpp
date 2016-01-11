@@ -43,16 +43,17 @@ class NoSuchFile: public ReadException {
 
 class InvalidSyntax: public Exception {
         vector<string>::size_type token_no;
+        string message;
     public:
         string what() const override {
             ostringstream oss;
-            oss << "invalid syntax on token " << token_no;
+            oss << "invalid syntax on token " << token_no << ": " << message;
             return oss.str();
         }
         decltype(token_no) tokenIndex() const {
             return token_no;
         }
-        InvalidSyntax(decltype(token_no) t): token_no(t) {}
+        InvalidSyntax(decltype(token_no) t, const string& m): token_no(t), message(m) {}
 };
 
 
@@ -547,7 +548,9 @@ namespace support {
                             token.str("");
                         }
                         tk = support::str::extract(s.substr(i));
-                        i += tk.size();
+                        // -1 to not consume the next token as it
+                        // may be meaningful (e.g. a semicolon)
+                        i += (tk.size()-1);
                         tokens.push_back(tk);
                         break;
                     default:
@@ -774,13 +777,13 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
             break;
         } else {
             if ((offset+number_of_processed_tokens+3) >= tokens.size()) {
-                throw InvalidSyntax(offset+number_of_processed_tokens);
+                throw InvalidSyntax((offset+number_of_processed_tokens), ("missing tokens during call to " + tokens[offset+number_of_processed_tokens]));
             } else if (tokens[offset+number_of_processed_tokens+1] == "(") {
                 number_of_processed_tokens += processCall(tokens, (offset + number_of_processed_tokens), variable_registers, output);
             } else if (variable_registers.count(tokens[offset+number_of_processed_tokens]) and tokens[offset+number_of_processed_tokens+1] == "=" and tokens[offset+number_of_processed_tokens+3] == "(") {
                 number_of_processed_tokens += processCallWithReturnValueUsed(tokens, (offset+number_of_processed_tokens), variable_registers, output);
             } else {
-                throw InvalidSyntax(offset+number_of_processed_tokens);
+                throw InvalidSyntax((offset+number_of_processed_tokens), "other error");
             }
         }
     }
