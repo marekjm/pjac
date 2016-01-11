@@ -587,7 +587,13 @@ struct FunctionEnvironment {
     unsigned begin_balance;
     string function_name;
 
-    FunctionEnvironment(const string& s): begin_balance(0), function_name(s) {}
+    CompilationEnvironment *env;
+
+    FunctionEnvironment(const string& s, CompilationEnvironment* ce):
+        begin_balance(0),
+        function_name(s),
+        env(ce) {
+        }
 };
 
 
@@ -732,16 +738,21 @@ vector<string>::size_type processCallWithReturnValueUsed(const vector<string>& t
     // skip opening "("
     ++offset;
 
+    if (fenv.variable_types.at(return_to) != fenv.env->functions.at(function_to_call)) {
+        throw InvalidSyntax(offset, (
+                    "mismatched type of return target variable " + return_to + " of type " + fenv.variable_types.at(return_to) + " and return type of function " + function_to_call + "->" + fenv.env->functions.at(function_to_call)));
+    }
+
     vector<string>::size_type i = (processFrame(tokens, function_to_call, offset, fenv, output) + 4);
     output << "    call " << fenv.variable_registers.at(return_to) << ' ' << function_to_call << endl;
 
     return i;
 }
 
-vector<string>::size_type processFunction(const vector<string>& tokens, vector<string>::size_type offset, ostringstream& output) {
+vector<string>::size_type processFunction(const vector<string>& tokens, vector<string>::size_type offset, CompilationEnvironment& cenv, ostringstream& output) {
     vector<string>::size_type number_of_processed_tokens = 0;
 
-    FunctionEnvironment fenv(tokens[offset + (number_of_processed_tokens++)]);
+    FunctionEnvironment fenv(tokens[offset + (number_of_processed_tokens++)], &cenv);
 
     if ((offset+number_of_processed_tokens+2) >= tokens.size() or tokens[offset+number_of_processed_tokens] != "-" or tokens[offset+number_of_processed_tokens+1] != ">") {
         throw InvalidSyntax((offset+number_of_processed_tokens), ("missing return type specifier in definition of function " + fenv.function_name));
@@ -754,6 +765,8 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
     if (fenv.return_type != "void" and fenv.return_type != "string" and fenv.return_type != "int" and fenv.return_type != "float") {
         throw InvalidSyntax((offset+number_of_processed_tokens), ("invalid return type in definition of function " + fenv.function_name));
     }
+
+    cenv.functions[fenv.function_name] = fenv.return_type;
 
     if (tokens[offset+number_of_processed_tokens] != "{") {
         throw InvalidSyntax((offset+number_of_processed_tokens), ("missing opening 'begin' in definition of function " + fenv.function_name));
@@ -845,10 +858,13 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
 
 void processSource(const vector<string>& tokens, ostringstream& output) {
     string previous_token = "", token = "";
+
+    CompilationEnvironment cenv;
+
     for (vector<string>::size_type i = 0; i < tokens.size(); ++i) {
         token = tokens[i];
         if (token == "function") {
-            i += processFunction(tokens, ++i, output);
+            i += processFunction(tokens, ++i, cenv, output);
         }
         previous_token = token;
     }
