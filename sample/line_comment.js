@@ -1,4 +1,4 @@
-function foo
+function foo -> int {
     // empty body
     var int a;
     var int b = 42;
@@ -12,4 +12,4 @@ function foo
     b = foo(a, b);
 
     return 4;
-end
+}

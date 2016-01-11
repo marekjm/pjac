@@ -4,15 +4,14 @@ function add -> int {
     return a;
 }
 
-function print -> void {
-    asm print (arg 1 0);
-    return;
-}
+function print -> void { asm print (arg 1 0); }
 
 function main -> int {
-    var int a = 20;
-    var int b = 22;
-    var int c;
+    {
+        var int a = 20;
+        var int b = 22;
+        var int c;
+    }
     c = add(a, b);
     print(c);
     return 0;

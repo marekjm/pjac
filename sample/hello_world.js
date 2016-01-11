@@ -1,10 +1,10 @@
-function print
+function print -> void {
     asm print (arg 1 0);
     return;
-end
+}
 
-function main
+function main -> int {
     var string msg = "Hello World!";
     print(msg);
     return 0;
-end
+}

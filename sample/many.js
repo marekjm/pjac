@@ -1,8 +1,8 @@
-function foo
+function foo -> void {
     return;
-end
+}
 
-function bar
+function bar -> int {
     foo();
     return 4;
-end
+}

@@ -1,5 +1,5 @@
 begin class Foo
-    function foo
+    function foo -> void {
         var int a = 42;
         var float pi = 3.14;
         var string msg = "Hello World!";
@@ -19,10 +19,11 @@ begin class Foo
         print(b);
         print(c);
         print(msg);
-    end
+    }
 end
 
-function main
+function main -> int {
     //var Foo a;
     //a.foo();
-end
+    return 0;
+}

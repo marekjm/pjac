@@ -1,2 +1,1 @@
-function foo
-/* bar */end
+function foo -> void {/* bar */}
