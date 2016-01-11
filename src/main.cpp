@@ -41,6 +41,20 @@ class NoSuchFile: public ReadException {
         NoSuchFile(const string& f): filename(f) {}
 };
 
+class InvalidSyntax: public Exception {
+        vector<string>::size_type token_no;
+    public:
+        string what() const override {
+            ostringstream oss;
+            oss << "invalid syntax on token " << token_no;
+            return oss.str();
+        }
+        decltype(token_no) tokenIndex() const {
+            return token_no;
+        }
+        InvalidSyntax(decltype(token_no) t): token_no(t) {}
+};
+
 
 class Token {
     string::size_type line_number;
@@ -700,16 +714,10 @@ vector<string>::size_type processCallWithReturnValueUsed(const vector<string>& t
     return i;
 }
 
-void printBadLine(const vector<string>& tokens, vector<string>::size_type i) {
-    cout << "bad line:" << endl;
-    vector<string> line;
-    while (i > 0 and tokens[i] != "\n") {
-        --i;
+void annotateInvalidToken(const vector<string>& tokens, vector<string>::size_type no) {
+    for (vector<string>::size_type i = 0; i < tokens.size(); ++i) {
+        cout << ((i == no) ? ">>> " : "    ") << support::str::strencode(tokens[i]) << endl;
     }
-    while (++i < tokens.size() and tokens[i] != "\n") {
-        cout << tokens[i] << ' ';
-    }
-    cout << endl;
 }
 
 vector<string>::size_type processFunction(const vector<string>& tokens, vector<string>::size_type offset, ofstream& output) {
@@ -766,18 +774,13 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
             break;
         } else {
             if ((offset+number_of_processed_tokens+3) >= tokens.size()) {
-                cout << "fatal: invalid source code: missing tokens after call" << endl;
-                cout << "note: first unprocessable token: `" << support::str::strencode(tokens[offset+number_of_processed_tokens]) << '`' << endl;
-                exit(1);
+                throw InvalidSyntax(offset+number_of_processed_tokens);
             } else if (tokens[offset+number_of_processed_tokens+1] == "(") {
                 number_of_processed_tokens += processCall(tokens, (offset + number_of_processed_tokens), variable_registers, output);
             } else if (variable_registers.count(tokens[offset+number_of_processed_tokens]) and tokens[offset+number_of_processed_tokens+1] == "=" and tokens[offset+number_of_processed_tokens+3] == "(") {
                 number_of_processed_tokens += processCallWithReturnValueUsed(tokens, (offset+number_of_processed_tokens), variable_registers, output);
             } else {
-                cout << "fatal: invalid source code" << endl;
-                cout << "note: first unprocessable token: `" << support::str::strencode(tokens[offset+number_of_processed_tokens]) << '`' << endl;
-                printBadLine(tokens, (offset+number_of_processed_tokens));
-                exit(1);
+                throw InvalidSyntax(offset+number_of_processed_tokens);
             }
         }
     }
@@ -837,8 +840,14 @@ int main(int argc, char **argv) {
     vector<string> primitive_tokens = support::str::tokenize(source_text);
     vector<string> decommented_tokens = removeComments(primitive_tokens);
 
-    ofstream out(compilename);
-    processSource(decommented_tokens, out);
+    try {
+        ofstream out(compilename);
+        processSource(decommented_tokens, out);
+    } catch (const InvalidSyntax& e) {
+        cout << "fatal: " << e.what() << endl;
+        annotateInvalidToken(decommented_tokens, e.tokenIndex());
+        return 1;
+    }
 
     return 0;
 }
