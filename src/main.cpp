@@ -717,7 +717,13 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
             number_of_processed_tokens += processVariable(tokens, (offset + (++number_of_processed_tokens)), variable_registers, variable_types, variable_values, output);
         } else if (tokens[offset+number_of_processed_tokens] == "return") {
             has_returned = true;
-            if (tokens[offset + (++number_of_processed_tokens)] != ";") {
+
+            // skip "return" keyword
+            ++number_of_processed_tokens;
+
+            // this if deals with `return <token> ;` case
+            if (tokens[offset + number_of_processed_tokens] != ";") {
+                // this if deals with `return <number> ;` case
                 if (support::str::isnum(tokens[offset+number_of_processed_tokens])) {
                     if (tokens[offset+number_of_processed_tokens] == "0") {
                         output << "    izero 0" << endl;
@@ -727,9 +733,13 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
                 } else if (variable_registers[tokens[offset+number_of_processed_tokens]] != 0) {
                     output << "    move 0 " << variable_registers[tokens[offset+number_of_processed_tokens]] << endl;
                 }
+
+                // advance after the returned <token>
+                ++number_of_processed_tokens;
             }
+
+            // no need to deal with terminating ";" as loop increment will take care of it
             output << "    end" << endl;
-            ++number_of_processed_tokens;
         } else if (tokens[offset+number_of_processed_tokens] == "asm") {
             output << "    ";
             while (tokens[offset + (++number_of_processed_tokens)] != ";") {
