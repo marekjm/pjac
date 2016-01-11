@@ -1,4 +1,4 @@
-begin function foo
+function foo
     // empty body
     var int a;
     var int b = 42;

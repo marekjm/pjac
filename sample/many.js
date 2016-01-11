@@ -1,8 +1,8 @@
-begin function foo
+function foo
     return;
 end
 
-begin function bar
+function bar
     foo();
     return 4;
 end

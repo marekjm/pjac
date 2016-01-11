@@ -1,2 +1,2 @@
-begin function foo
+function foo
 /* bar */end

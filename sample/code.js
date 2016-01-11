@@ -1,5 +1,5 @@
 begin class Foo
-    begin function foo
+    function foo
         var int a = 42;
         var float pi = 3.14;
         var string msg = "Hello World!";
@@ -22,7 +22,7 @@ begin class Foo
     end
 end
 
-begin function main
+function main
     //var Foo a;
     //a.foo();
 end

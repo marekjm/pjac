@@ -1,15 +1,15 @@
-begin function add
+function add
     var int a;
     asm iadd 0 (arg 1 0) (arg 2 1);
     return a;
 end
 
-begin function print
+function print
     asm print (arg 1 0);
     return;
 end
 
-begin function main
+function main
     var int a = 20;
     var int b = 22;
     var int c;

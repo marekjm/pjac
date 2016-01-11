@@ -807,7 +807,7 @@ void processSource(const vector<string>& tokens, ostringstream& output) {
     string previous_token = "", token = "";
     for (vector<string>::size_type i = 0; i < tokens.size(); ++i) {
         token = tokens[i];
-        if (token == "function" and previous_token == "begin") {
+        if (token == "function") {
             i += processFunction(tokens, ++i, output);
         }
         previous_token = token;
