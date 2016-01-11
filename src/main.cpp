@@ -737,6 +737,10 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
 
     FunctionEnvironment fenv(tokens[offset + (number_of_processed_tokens++)]);
 
+    if (tokens[offset+number_of_processed_tokens] != "{") {
+        throw InvalidSyntax((offset+number_of_processed_tokens), ("missing opening 'begin' in definition of function " + fenv.function_name));
+    }
+
     // skip opening "begin" keyword
     ++number_of_processed_tokens;
     ++fenv.begin_balance;
@@ -783,7 +787,9 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
             continue;
         } else if (tokens[offset+number_of_processed_tokens] == ";") {
             continue;
-        } else if (tokens[offset+number_of_processed_tokens] == "end") {
+        } else if (tokens[offset+number_of_processed_tokens] == "{") {
+            --fenv.begin_balance;
+        } else if (tokens[offset+number_of_processed_tokens] == "}") {
             --fenv.begin_balance;
         } else {
             if ((offset+number_of_processed_tokens+3) >= tokens.size()) {
