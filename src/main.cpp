@@ -610,7 +610,7 @@ vector<string> mapStringVector(const vector<string>& sv, string(*fn)(const strin
     return mapped;
 }
 
-vector<string>::size_type processVariable(const vector<string>& tokens, vector<string>::size_type offset, map<string, unsigned>& variable_registers, map<string, string>& variable_types, map<string, string>& variable_values, ofstream& output) {
+vector<string>::size_type processVariable(const vector<string>& tokens, vector<string>::size_type offset, map<string, unsigned>& variable_registers, map<string, string>& variable_types, map<string, string>& variable_values, ostringstream& output) {
     vector<string>::size_type i = offset;
     string var_name = "", var_type = "", var_value = "";
     unsigned var_register = 0;
@@ -656,7 +656,7 @@ vector<string>::size_type processVariable(const vector<string>& tokens, vector<s
     return (i-offset);
 }
 
-vector<string>::size_type processFrame(const vector<string>& tokens, const string& function_to_call, vector<string>::size_type offset, map<string, unsigned>& variable_registers, ofstream& output) {
+vector<string>::size_type processFrame(const vector<string>& tokens, const string& function_to_call, vector<string>::size_type offset, map<string, unsigned>& variable_registers, ostringstream& output) {
     vector<string>::size_type i = offset;
     vector<unsigned> parameter_sources;
 
@@ -691,7 +691,7 @@ vector<string>::size_type processFrame(const vector<string>& tokens, const strin
     return (i-offset);
 }
 
-vector<string>::size_type processCall(const vector<string>& tokens, vector<string>::size_type offset, map<string, unsigned>& variable_registers, ofstream& output) {
+vector<string>::size_type processCall(const vector<string>& tokens, vector<string>::size_type offset, map<string, unsigned>& variable_registers, ostringstream& output) {
     string function_to_call = tokens[offset++];
     // skip opening "("
     ++offset;
@@ -700,7 +700,7 @@ vector<string>::size_type processCall(const vector<string>& tokens, vector<strin
 
     return i;
 }
-vector<string>::size_type processCallWithReturnValueUsed(const vector<string>& tokens, vector<string>::size_type offset, map<string, unsigned>& variable_registers, ofstream& output) {
+vector<string>::size_type processCallWithReturnValueUsed(const vector<string>& tokens, vector<string>::size_type offset, map<string, unsigned>& variable_registers, ostringstream& output) {
     string return_to = tokens[offset++];
 
     // skip "="
@@ -723,7 +723,7 @@ void annotateInvalidToken(const vector<string>& tokens, vector<string>::size_typ
     }
 }
 
-vector<string>::size_type processFunction(const vector<string>& tokens, vector<string>::size_type offset, ofstream& output) {
+vector<string>::size_type processFunction(const vector<string>& tokens, vector<string>::size_type offset, ostringstream& output) {
     vector<string>::size_type number_of_processed_tokens = 0;
 
     string function_name = tokens[offset + (number_of_processed_tokens++)];
@@ -797,7 +797,7 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
 }
 
 
-void processSource(const vector<string>& tokens, ofstream& output) {
+void processSource(const vector<string>& tokens, ostringstream& output) {
     string previous_token = "", token = "";
     for (vector<string>::size_type i = 0; i < tokens.size(); ++i) {
         token = tokens[i];
@@ -843,9 +843,11 @@ int main(int argc, char **argv) {
     vector<string> primitive_tokens = support::str::tokenize(source_text);
     vector<string> decommented_tokens = removeComments(primitive_tokens);
 
+    ostringstream out;
     try {
-        ofstream out(compilename);
         processSource(decommented_tokens, out);
+        ofstream compile_output(compilename);
+        compile_output << out.str();
     } catch (const InvalidSyntax& e) {
         cout << "fatal: " << e.what() << endl;
         annotateInvalidToken(decommented_tokens, e.tokenIndex());
