@@ -667,7 +667,7 @@ vector<string>::size_type processVariable(const vector<string>& tokens, vector<s
     return (i-offset);
 }
 
-vector<string>::size_type processFrame(const vector<string>& tokens, const string& function_to_call, vector<string>::size_type offset, map<string, unsigned>& variable_registers, ostringstream& output) {
+vector<string>::size_type processFrame(const vector<string>& tokens, const string& function_to_call, vector<string>::size_type offset, FunctionEnvironment& fenv, ostringstream& output) {
     vector<string>::size_type i = offset;
     vector<unsigned> parameter_sources;
 
@@ -677,11 +677,11 @@ vector<string>::size_type processFrame(const vector<string>& tokens, const strin
     }
 
     for (; i < tokens.size() and tokens[i] != ";"; ++i) {
-        if (variable_registers.count(tokens[i]) == 0) {
+        if (fenv.variable_registers.count(tokens[i]) == 0) {
             cout << "fatal: undefined name as parameter: `" << tokens[i] << "` in call to function `" << function_to_call << '`' << endl;
             exit(1);
         }
-        parameter_sources.push_back(variable_registers.at(tokens[i]));
+        parameter_sources.push_back(fenv.variable_registers.at(tokens[i]));
         // account for both "," between parameters and
         // closing ")"
         ++i;
@@ -702,16 +702,16 @@ vector<string>::size_type processFrame(const vector<string>& tokens, const strin
     return (i-offset);
 }
 
-vector<string>::size_type processCall(const vector<string>& tokens, vector<string>::size_type offset, map<string, unsigned>& variable_registers, ostringstream& output) {
+vector<string>::size_type processCall(const vector<string>& tokens, vector<string>::size_type offset, FunctionEnvironment& fenv, ostringstream& output) {
     string function_to_call = tokens[offset++];
     // skip opening "("
     ++offset;
-    vector<string>::size_type i = processFrame(tokens, function_to_call, offset, variable_registers, output);
+    vector<string>::size_type i = processFrame(tokens, function_to_call, offset, fenv, output);
     output << "    call 0 " << function_to_call << endl;
 
     return i;
 }
-vector<string>::size_type processCallWithReturnValueUsed(const vector<string>& tokens, vector<string>::size_type offset, map<string, unsigned>& variable_registers, ostringstream& output) {
+vector<string>::size_type processCallWithReturnValueUsed(const vector<string>& tokens, vector<string>::size_type offset, FunctionEnvironment& fenv, ostringstream& output) {
     string return_to = tokens[offset++];
 
     // skip "="
@@ -722,8 +722,8 @@ vector<string>::size_type processCallWithReturnValueUsed(const vector<string>& t
     // skip opening "("
     ++offset;
 
-    vector<string>::size_type i = (processFrame(tokens, function_to_call, offset, variable_registers, output) + 4);
-    output << "    call " << variable_registers.at(return_to) << ' ' << function_to_call << endl;
+    vector<string>::size_type i = (processFrame(tokens, function_to_call, offset, fenv, output) + 4);
+    output << "    call " << fenv.variable_registers.at(return_to) << ' ' << function_to_call << endl;
 
     return i;
 }
@@ -787,11 +787,14 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
             break;
         } else {
             if ((offset+number_of_processed_tokens+3) >= tokens.size()) {
-                throw InvalidSyntax((offset+number_of_processed_tokens), ("missing tokens during call to " + tokens[offset+number_of_processed_tokens]));
+                throw InvalidSyntax(
+                        (offset+number_of_processed_tokens),
+                        ("missing tokens during call to " + tokens[offset+number_of_processed_tokens])
+                      );
             } else if (tokens[offset+number_of_processed_tokens+1] == "(") {
-                number_of_processed_tokens += processCall(tokens, (offset + number_of_processed_tokens), fenv.variable_registers, output);
+                number_of_processed_tokens += processCall(tokens, (offset + number_of_processed_tokens), fenv, output);
             } else if (fenv.variable_registers.count(tokens[offset+number_of_processed_tokens]) and tokens[offset+number_of_processed_tokens+1] == "=" and tokens[offset+number_of_processed_tokens+3] == "(") {
-                number_of_processed_tokens += processCallWithReturnValueUsed(tokens, (offset+number_of_processed_tokens), fenv.variable_registers, output);
+                number_of_processed_tokens += processCallWithReturnValueUsed(tokens, (offset+number_of_processed_tokens), fenv, output);
             } else {
                 throw InvalidSyntax((offset+number_of_processed_tokens), "other error");
             }
