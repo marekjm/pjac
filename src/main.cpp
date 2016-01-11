@@ -578,6 +578,12 @@ struct FunctionEnvironment {
     map<string, unsigned> variable_registers;
     map<string, string> variable_types;
     map<string, string> variable_values;
+
+    vector<string> parameters;
+    map<string, string> parameter_types;
+
+    string return_type;
+
     unsigned begin_balance;
     string function_name;
 
@@ -737,11 +743,23 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
 
     FunctionEnvironment fenv(tokens[offset + (number_of_processed_tokens++)]);
 
+    if ((offset+number_of_processed_tokens+2) >= tokens.size() or tokens[offset+number_of_processed_tokens] != "-" or tokens[offset+number_of_processed_tokens+1] != ">") {
+        throw InvalidSyntax((offset+number_of_processed_tokens), ("missing return type specifier in definition of function " + fenv.function_name));
+    }
+
+    // skip over "-" and ">" that make up return type specifier
+    number_of_processed_tokens += 2;
+
+    fenv.return_type = tokens[offset + (number_of_processed_tokens++)];
+    if (fenv.return_type != "void" and fenv.return_type != "string" and fenv.return_type != "int" and fenv.return_type != "float") {
+        throw InvalidSyntax((offset+number_of_processed_tokens), ("invalid return type in definition of function " + fenv.function_name));
+    }
+
     if (tokens[offset+number_of_processed_tokens] != "{") {
         throw InvalidSyntax((offset+number_of_processed_tokens), ("missing opening 'begin' in definition of function " + fenv.function_name));
     }
 
-    // skip opening "begin" keyword
+    // skip opening "{"
     ++number_of_processed_tokens;
     ++fenv.begin_balance;
 
