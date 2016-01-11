@@ -621,17 +621,17 @@ vector<string> mapStringVector(const vector<string>& sv, string(*fn)(const strin
     return mapped;
 }
 
-vector<string>::size_type processVariable(const vector<string>& tokens, vector<string>::size_type offset, map<string, unsigned>& variable_registers, map<string, string>& variable_types, map<string, string>& variable_values, ostringstream& output) {
+vector<string>::size_type processVariable(const vector<string>& tokens, vector<string>::size_type offset, FunctionEnvironment& fenv, ostringstream& output) {
     vector<string>::size_type i = offset;
     string var_name = "", var_type = "", var_value = "";
     unsigned var_register = 0;
 
     var_type = tokens[i];
     var_name = tokens[++i];
-    var_register = variable_registers.size();
+    var_register = fenv.variable_registers.size();
 
-    variable_registers[var_name] = var_register;
-    variable_types[var_name] = var_type;
+    fenv.variable_registers[var_name] = var_register;
+    fenv.variable_types[var_name] = var_type;
 
     ++i;
 
@@ -648,10 +648,10 @@ vector<string>::size_type processVariable(const vector<string>& tokens, vector<s
         // skip terminating ";"
         ++i;
     }
-    variable_values[var_name] = var_value;
+    fenv.variable_values[var_name] = var_value;
 
-    if (variable_registers.count(var_value)) {
-        output << "    copy " << var_register << ' ' << variable_registers[var_value] << endl;
+    if (fenv.variable_registers.count(var_value)) {
+        output << "    copy " << var_register << ' ' << fenv.variable_registers[var_value] << endl;
     } else {
         output << "    ";
         if (var_type == "int") {
@@ -747,7 +747,7 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
 
     for (; number_of_processed_tokens+offset < tokens.size(); ++number_of_processed_tokens) {
         if (tokens[offset+number_of_processed_tokens] == "var") {
-            number_of_processed_tokens += processVariable(tokens, (offset + (++number_of_processed_tokens)), fenv.variable_registers, fenv.variable_types, fenv.variable_values, output);
+            number_of_processed_tokens += processVariable(tokens, (offset + (++number_of_processed_tokens)), fenv, output);
         } else if (tokens[offset+number_of_processed_tokens] == "return") {
             has_returned = true;
 
