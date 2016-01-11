@@ -728,12 +728,6 @@ vector<string>::size_type processCallWithReturnValueUsed(const vector<string>& t
     return i;
 }
 
-void annotateInvalidToken(const vector<string>& tokens, vector<string>::size_type no) {
-    for (vector<string>::size_type i = 0; i < tokens.size(); ++i) {
-        cout << ((i == no) ? ">>> " : "    ") << support::str::strencode(tokens[i]) << endl;
-    }
-}
-
 vector<string>::size_type processFunction(const vector<string>& tokens, vector<string>::size_type offset, ostringstream& output) {
     vector<string>::size_type number_of_processed_tokens = 0;
 
@@ -809,7 +803,6 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
     return number_of_processed_tokens;
 }
 
-
 void processSource(const vector<string>& tokens, ostringstream& output) {
     string previous_token = "", token = "";
     for (vector<string>::size_type i = 0; i < tokens.size(); ++i) {
@@ -821,6 +814,12 @@ void processSource(const vector<string>& tokens, ostringstream& output) {
     }
 }
 
+
+void annotateInvalidToken(const vector<string>& tokens, vector<string>::size_type no) {
+    for (vector<string>::size_type i = 0; i < tokens.size(); ++i) {
+        cout << ((i == no) ? ">>> " : "    ") << support::str::strencode(tokens[i]) << endl;
+    }
+}
 
 int main(int argc, char **argv) {
     // setup command line arguments vector
