@@ -918,7 +918,7 @@ int main(int argc, char **argv) {
         compile_output << out.str();
     } catch (const InvalidSyntax& e) {
         cout << "fatal: " << e.what() << endl;
-        annotateInvalidToken(decommented_tokens, e.tokenIndex());
+        //annotateInvalidToken(decommented_tokens, e.tokenIndex());
         cout << "\nsource generated so far:" << endl;
         cout << out.str() << endl;
         return 1;
