@@ -789,11 +789,18 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
                         output << "    istore 0 " << tokens[offset+number_of_processed_tokens] << endl;
                     }
                 } else if (fenv.variable_registers[tokens[offset+number_of_processed_tokens]] != 0) {
+                    if (fenv.return_type != fenv.variable_types.at(tokens[offset+number_of_processed_tokens])) {
+                        throw InvalidSyntax((offset+number_of_processed_tokens), ("mismatched return type in function " + fenv.function_name + ", expected " + fenv.return_type + " but got " + fenv.variable_types.at(tokens[offset+number_of_processed_tokens])));
+                    }
                     output << "    move 0 " << fenv.variable_registers[tokens[offset+number_of_processed_tokens]] << endl;
                 }
 
                 // advance after the returned <token>
                 ++number_of_processed_tokens;
+            } else {
+                if (fenv.return_type != "void") {
+                    throw InvalidSyntax((offset+number_of_processed_tokens), ("mismatched return type in function " + fenv.function_name + ", expected " + fenv.return_type + " but got void"));
+                }
             }
 
             // no need to deal with terminating ";" as loop increment will take care of it
