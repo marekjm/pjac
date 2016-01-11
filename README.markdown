@@ -14,17 +14,14 @@ And, well, the compiler is hand-hacked, buggy and *very* simple.
 Here's "Hello World!" in PJAC-compilable code.
 
 ```
-begin function print
-    // inline assembly to access the "print" and "arg" instructions
-    asm print (arg 1 0);
-    return 0;
-end
+// inline assembly to access the "print" and "arg" instructions
+function print -> void { asm print (arg 1 0); }
 
-begin function main
+function main -> int {
     var string s = "Hello World!";
     print(s);
     return 0;  // only integers can be returned this way
-end
+}
 ```
 
 Surprisingly, it's actually *more* code than the equivalent program
