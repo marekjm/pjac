@@ -695,7 +695,7 @@ vector<string>::size_type processCall(const vector<string>& tokens, vector<strin
     string function_to_call = tokens[offset++];
     // skip opening "("
     ++offset;
-    vector<string>::size_type i = (processFrame(tokens, function_to_call, offset, variable_registers, output) + 2);
+    vector<string>::size_type i = processFrame(tokens, function_to_call, offset, variable_registers, output);
     output << "    call 0 " << function_to_call << endl;
 
     return i;
