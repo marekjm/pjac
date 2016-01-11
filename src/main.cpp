@@ -760,6 +760,8 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
             output << endl;
         } else if (tokens[offset+number_of_processed_tokens] == "\n") {
             continue;
+        } else if (tokens[offset+number_of_processed_tokens] == ";") {
+            continue;
         } else if (tokens[offset+number_of_processed_tokens] == "end") {
             break;
         } else {
