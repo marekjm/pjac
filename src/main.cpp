@@ -570,6 +570,17 @@ namespace support {
 }
 
 
+struct CompilationEnvironment {
+    map<string, string> functions;
+};
+
+struct FunctionEnvironment {
+    map<string, unsigned> variable_registers;
+    map<string, string> variable_types;
+    map<string, string> variable_values;
+};
+
+
 vector<string> removeComments(const vector<string>& tks) {
     vector<string> tokens;
 
@@ -727,9 +738,8 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
     vector<string>::size_type number_of_processed_tokens = 0;
 
     string function_name = tokens[offset + (number_of_processed_tokens++)];
-    map<string, unsigned> variable_registers;
-    map<string, string> variable_types;
-    map<string, string> variable_values;
+
+    FunctionEnvironment fenv;
 
     bool has_returned = false;
 
@@ -737,7 +747,7 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
 
     for (; number_of_processed_tokens+offset < tokens.size(); ++number_of_processed_tokens) {
         if (tokens[offset+number_of_processed_tokens] == "var") {
-            number_of_processed_tokens += processVariable(tokens, (offset + (++number_of_processed_tokens)), variable_registers, variable_types, variable_values, output);
+            number_of_processed_tokens += processVariable(tokens, (offset + (++number_of_processed_tokens)), fenv.variable_registers, fenv.variable_types, fenv.variable_values, output);
         } else if (tokens[offset+number_of_processed_tokens] == "return") {
             has_returned = true;
 
@@ -753,8 +763,8 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
                     } else {
                         output << "    istore 0 " << tokens[offset+number_of_processed_tokens] << endl;
                     }
-                } else if (variable_registers[tokens[offset+number_of_processed_tokens]] != 0) {
-                    output << "    move 0 " << variable_registers[tokens[offset+number_of_processed_tokens]] << endl;
+                } else if (fenv.variable_registers[tokens[offset+number_of_processed_tokens]] != 0) {
+                    output << "    move 0 " << fenv.variable_registers[tokens[offset+number_of_processed_tokens]] << endl;
                 }
 
                 // advance after the returned <token>
@@ -779,9 +789,9 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
             if ((offset+number_of_processed_tokens+3) >= tokens.size()) {
                 throw InvalidSyntax((offset+number_of_processed_tokens), ("missing tokens during call to " + tokens[offset+number_of_processed_tokens]));
             } else if (tokens[offset+number_of_processed_tokens+1] == "(") {
-                number_of_processed_tokens += processCall(tokens, (offset + number_of_processed_tokens), variable_registers, output);
-            } else if (variable_registers.count(tokens[offset+number_of_processed_tokens]) and tokens[offset+number_of_processed_tokens+1] == "=" and tokens[offset+number_of_processed_tokens+3] == "(") {
-                number_of_processed_tokens += processCallWithReturnValueUsed(tokens, (offset+number_of_processed_tokens), variable_registers, output);
+                number_of_processed_tokens += processCall(tokens, (offset + number_of_processed_tokens), fenv.variable_registers, output);
+            } else if (fenv.variable_registers.count(tokens[offset+number_of_processed_tokens]) and tokens[offset+number_of_processed_tokens+1] == "=" and tokens[offset+number_of_processed_tokens+3] == "(") {
+                number_of_processed_tokens += processCallWithReturnValueUsed(tokens, (offset+number_of_processed_tokens), fenv.variable_registers, output);
             } else {
                 throw InvalidSyntax((offset+number_of_processed_tokens), "other error");
             }
