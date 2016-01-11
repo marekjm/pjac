@@ -780,6 +780,9 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
             if (tokens[offset + number_of_processed_tokens] != ";") {
                 // this if deals with `return <number> ;` case
                 if (support::str::isnum(tokens[offset+number_of_processed_tokens])) {
+                    if (fenv.return_type != "int") {
+                        throw InvalidSyntax((offset+number_of_processed_tokens), ("mismatched return type in function " + fenv.function_name + ", expected " + fenv.return_type + " but got int"));
+                    }
                     if (tokens[offset+number_of_processed_tokens] == "0") {
                         output << "    izero 0" << endl;
                     } else {
