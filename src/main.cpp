@@ -829,7 +829,7 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
         } else if (tokens[offset+number_of_processed_tokens] == ";") {
             continue;
         } else if (tokens[offset+number_of_processed_tokens] == "{") {
-            --fenv.begin_balance;
+            ++fenv.begin_balance;
         } else if (tokens[offset+number_of_processed_tokens] == "}") {
             --fenv.begin_balance;
         } else {
