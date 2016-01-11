@@ -578,6 +578,10 @@ struct FunctionEnvironment {
     map<string, unsigned> variable_registers;
     map<string, string> variable_types;
     map<string, string> variable_values;
+    unsigned begin_balance;
+    string function_name;
+
+    FunctionEnvironment(const string& s): begin_balance(0), function_name(s) {}
 };
 
 
@@ -731,15 +735,17 @@ vector<string>::size_type processCallWithReturnValueUsed(const vector<string>& t
 vector<string>::size_type processFunction(const vector<string>& tokens, vector<string>::size_type offset, ostringstream& output) {
     vector<string>::size_type number_of_processed_tokens = 0;
 
-    string function_name = tokens[offset + (number_of_processed_tokens++)];
+    FunctionEnvironment fenv(tokens[offset + (number_of_processed_tokens++)]);
 
-    FunctionEnvironment fenv;
+    // skip opening "begin" keyword
+    ++number_of_processed_tokens;
+    ++fenv.begin_balance;
 
     bool has_returned = false;
 
-    output << ".function: " << function_name << endl;
+    output << ".function: " << fenv.function_name << endl;
 
-    for (; number_of_processed_tokens+offset < tokens.size(); ++number_of_processed_tokens) {
+    for (; number_of_processed_tokens+offset < tokens.size() and fenv.begin_balance; ++number_of_processed_tokens) {
         if (tokens[offset+number_of_processed_tokens] == "var") {
             number_of_processed_tokens += processVariable(tokens, (offset + (++number_of_processed_tokens)), fenv, output);
         } else if (tokens[offset+number_of_processed_tokens] == "return") {
@@ -778,7 +784,7 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
         } else if (tokens[offset+number_of_processed_tokens] == ";") {
             continue;
         } else if (tokens[offset+number_of_processed_tokens] == "end") {
-            break;
+            --fenv.begin_balance;
         } else {
             if ((offset+number_of_processed_tokens+3) >= tokens.size()) {
                 throw InvalidSyntax(
