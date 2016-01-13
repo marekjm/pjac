@@ -702,6 +702,10 @@ vector<string>::size_type processFrame(const vector<string>& tokens, const strin
     vector<string>::size_type i = offset;
     vector<unsigned> parameter_sources;
 
+    if (fenv.env->signatures.count(function_to_call) == 0) {
+        throw InvalidSyntax(i, ("call to undefined function " + function_to_call));
+    }
+
     if (tokens[i] == ")") {
         if (fenv.env->signatures.at(function_to_call).parameters.size() != 0) {
             throw InvalidSyntax(i, ("missing parameters in call to function " + function_to_call));
