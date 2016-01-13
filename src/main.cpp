@@ -69,6 +69,13 @@ class Token {
         decltype(byte_number) byte() const { return byte_number; }
         string text() const { return token_string; }
 
+        bool operator==(const string& s) const {
+            return (token_string == s);
+        }
+        bool operator!=(const string& s) const {
+            return (token_string != s);
+        }
+
         Token(const string& s, string::size_type ln, string::size_type cn, string::size_type bn):
             line_number(ln),
             character_number(cn),
