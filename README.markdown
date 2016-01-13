@@ -15,9 +15,9 @@ Here's "Hello World!" in PJAC-compilable code.
 
 ```
 // inline assembly to access the "print" and "arg" instructions
-function print -> void { asm print (arg 1 0); }
+function print(undefined msg) -> void { asm print (arg 1 0); }
 
-function main -> int {
+function main() -> int {
     var string s = "Hello World!";
     print(s);
     return 0;  // only integers can be returned this way
