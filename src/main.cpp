@@ -76,6 +76,10 @@ class Token {
             return (token_string != s);
         }
 
+        operator std::string() const {
+            return token_string;
+        }
+
         Token(const string& s, string::size_type ln, string::size_type cn, string::size_type bn):
             line_number(ln),
             character_number(cn),
@@ -89,6 +93,8 @@ class Token {
             token_string("") {
             }
 };
+using TokenVector = vector<Token>;
+using TokenVectorSize = TokenVector::size_type;
 
 
 namespace support {
@@ -588,8 +594,8 @@ namespace support {
             return Token(tok, line_no, (char_no - tok.size()), (byte_no - tok.size()));
         }
 
-        vector<Token> lex(const string& s) {
-            vector<Token> tokens;
+        TokenVector lex(const string& s) {
+            TokenVector tokens;
             ostringstream token;
             string::size_type i = 0;
 
@@ -754,6 +760,36 @@ vector<string> removeComments(const vector<string>& tks) {
     return tokens;
 }
 
+vector<Token> removeComments(const vector<Token>& tks) {
+    vector<Token> tokens;
+
+    Token token, previous_token;
+    for (vector<string>::size_type i = 0; i < tks.size(); ++i) {
+        token = tks[i];
+
+        if (token == "/" and previous_token == "/") {
+            // double-slash comments go until the first newline
+            while (++i < tks.size() and tks[i] != "\n");
+            // last pushed token has to be removed as it is the starting "/"
+            tokens.pop_back();
+            continue;
+        }
+        if (token == "*" and previous_token == "/") {
+            // block comments go from "/*" to "*/"
+            // last pushed token has to be removed as it is the starting "/"
+            tokens.pop_back();
+            // skip the "*" of comment opening
+            ++i;
+            while (++i < tks.size() and not (tks[i-1] == "*" and tks[i] == "/"));
+            continue;
+        }
+
+        previous_token = token;
+        tokens.push_back(token);
+    }
+
+    return tokens;
+}
 
 vector<string> mapStringVector(const vector<string>& sv, string(*fn)(const string&)) {
     vector<string> mapped;
@@ -763,8 +799,9 @@ vector<string> mapStringVector(const vector<string>& sv, string(*fn)(const strin
     return mapped;
 }
 
-vector<string>::size_type processVariable(const vector<string>& tokens, vector<string>::size_type offset, FunctionEnvironment& fenv, ostringstream& output) {
-    vector<string>::size_type i = offset;
+
+TokenVectorSize processVariable(const TokenVector& tokens, TokenVectorSize offset, FunctionEnvironment& fenv, ostringstream& output) {
+    TokenVectorSize i = offset;
     string var_name = "", var_type = "", var_value = "";
     unsigned var_register = 0;
 
@@ -809,8 +846,8 @@ vector<string>::size_type processVariable(const vector<string>& tokens, vector<s
     return (i-offset);
 }
 
-vector<string>::size_type processFrame(const vector<string>& tokens, const string& function_to_call, vector<string>::size_type offset, FunctionEnvironment& fenv, ostringstream& output) {
-    vector<string>::size_type i = offset;
+TokenVectorSize processFrame(const TokenVector& tokens, const string& function_to_call, TokenVectorSize offset, FunctionEnvironment& fenv, ostringstream& output) {
+    TokenVectorSize i = offset;
     vector<unsigned> parameter_sources;
 
     if (fenv.env->signatures.count(function_to_call) == 0) {
@@ -827,8 +864,7 @@ vector<string>::size_type processFrame(const vector<string>& tokens, const strin
 
     for (; i < tokens.size() and tokens[i] != ";"; ++i) {
         if (fenv.variable_registers.count(tokens[i]) == 0) {
-            cout << "fatal: undefined name as parameter: `" << tokens[i] << "` in call to function `" << function_to_call << '`' << endl;
-            exit(1);
+            throw InvalidSyntax(i, ("undefined name as parameter: `" + tokens[i].text() + "` in call to function `" + function_to_call + "`"));
         }
 
         if (parameter_sources.size() >= fenv.env->signatures.at(function_to_call).parameters.size()) {
@@ -866,16 +902,16 @@ vector<string>::size_type processFrame(const vector<string>& tokens, const strin
     return (i-offset);
 }
 
-vector<string>::size_type processCall(const vector<string>& tokens, vector<string>::size_type offset, FunctionEnvironment& fenv, ostringstream& output) {
+TokenVectorSize processCall(const TokenVector& tokens, TokenVectorSize offset, FunctionEnvironment& fenv, ostringstream& output) {
     string function_to_call = tokens[offset++];
     // skip opening "("
     ++offset;
-    vector<string>::size_type i = processFrame(tokens, function_to_call, offset, fenv, output);
+    TokenVectorSize i = processFrame(tokens, function_to_call, offset, fenv, output);
     output << "    call 0 " << function_to_call << endl;
 
     return i;
 }
-vector<string>::size_type processCallWithReturnValueUsed(const vector<string>& tokens, vector<string>::size_type offset, FunctionEnvironment& fenv, ostringstream& output) {
+TokenVectorSize processCallWithReturnValueUsed(const TokenVector& tokens, TokenVectorSize offset, FunctionEnvironment& fenv, ostringstream& output) {
     string return_to = tokens[offset++];
 
     // skip "="
@@ -891,14 +927,14 @@ vector<string>::size_type processCallWithReturnValueUsed(const vector<string>& t
                     "mismatched type of return target variable " + return_to + " of type " + fenv.variable_types.at(return_to) + " and return type of function " + function_to_call + "->" + fenv.env->functions.at(function_to_call)));
     }
 
-    vector<string>::size_type i = (processFrame(tokens, function_to_call, offset, fenv, output) + 4);
+    TokenVectorSize i = (processFrame(tokens, function_to_call, offset, fenv, output) + 4);
     output << "    call " << fenv.variable_registers.at(return_to) << ' ' << function_to_call << endl;
 
     return i;
 }
 
-vector<string>::size_type processFunction(const vector<string>& tokens, vector<string>::size_type offset, CompilationEnvironment& cenv, ostringstream& output) {
-    vector<string>::size_type number_of_processed_tokens = 0;
+TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offset, CompilationEnvironment& cenv, ostringstream& output) {
+    TokenVectorSize number_of_processed_tokens = 0;
 
     FunctionEnvironment fenv(tokens[offset + (number_of_processed_tokens++)], &cenv);
 
@@ -922,7 +958,7 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
         } else if (tokens[i+1] == ")") {
             // explicitly do nothing
         } else {
-            throw InvalidSyntax(i, ("unexpected token in parameters list of function " + fenv.function_name + ": " + tokens[i]));
+            throw InvalidSyntax(i, ("unexpected token in parameters list of function " + fenv.function_name + ": " + tokens[i].text()));
         }
         number_of_processed_tokens += 3;
     }
@@ -994,7 +1030,7 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
                     if (tokens[offset+number_of_processed_tokens] == "0") {
                         output << "    izero 0" << endl;
                     } else {
-                        output << "    istore 0 " << tokens[offset+number_of_processed_tokens] << endl;
+                        output << "    istore 0 " << tokens[offset+number_of_processed_tokens].text() << endl;
                     }
                 } else if (fenv.variable_registers[tokens[offset+number_of_processed_tokens]] != 0) {
                     if (fenv.return_type != fenv.variable_types.at(tokens[offset+number_of_processed_tokens])) {
@@ -1016,7 +1052,7 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
         } else if (tokens[offset+number_of_processed_tokens] == "asm") {
             output << "    ";
             while (tokens[offset + (++number_of_processed_tokens)] != ";") {
-                output << tokens[offset+number_of_processed_tokens] << ' ';
+                output << tokens[offset+number_of_processed_tokens].text() << ' ';
             }
             output << endl;
         } else if (tokens[offset+number_of_processed_tokens] == "\n") {
@@ -1031,7 +1067,7 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
             if ((offset+number_of_processed_tokens+3) >= tokens.size()) {
                 throw InvalidSyntax(
                         (offset+number_of_processed_tokens),
-                        ("missing tokens during call to " + tokens[offset+number_of_processed_tokens])
+                        ("missing tokens during call to " + tokens[offset+number_of_processed_tokens].text())
                       );
             } else if (tokens[offset+number_of_processed_tokens+1] == "(") {
                 number_of_processed_tokens += processCall(tokens, (offset + number_of_processed_tokens), fenv, output);
@@ -1051,7 +1087,7 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
     return number_of_processed_tokens;
 }
 
-void processSource(const vector<string>& tokens, ostringstream& output) {
+void processSource(const TokenVector& tokens, ostringstream& output) {
     string previous_token = "", token = "";
 
     CompilationEnvironment cenv;
@@ -1103,19 +1139,12 @@ int main(int argc, char **argv) {
 
     string source_text = support::io::readfile(filename);
 
-    auto toks = support::str::lex(source_text);
-    for (decltype(toks)::size_type i = 0; i < toks.size(); ++i) {
-        cout << toks[i].line() << ':' << toks[i].character() << ": " << support::str::strencode(toks[i].text()) << endl;
-    }
-
-    return 0;
-
-    vector<string> primitive_tokens = support::str::tokenize(source_text);
-    vector<string> decommented_tokens = removeComments(primitive_tokens);
+    auto primitive_toks = support::str::lex(source_text);
+    auto toks = removeComments(primitive_toks);
 
     ostringstream out;
     try {
-        processSource(decommented_tokens, out);
+        processSource(toks, out);
         ofstream compile_output(compilename);
         compile_output << out.str();
     } catch (const InvalidSyntax& e) {
