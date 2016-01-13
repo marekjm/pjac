@@ -569,9 +569,24 @@ namespace support {
     }
 }
 
+struct FunctionEnvironment;
+
+struct FunctionSignature {
+    string function_name;
+    string return_type;
+    vector<string> parameters;
+    map<string, string> parameter_types;
+
+    FunctionSignature(const string& n, const string& r):
+        function_name(n),
+        return_type(r)
+    {}
+    FunctionSignature(): function_name(""), return_type("") {}
+};
 
 struct CompilationEnvironment {
     map<string, string> functions;
+    map<string, FunctionSignature> signatures;
 };
 
 struct FunctionEnvironment {
@@ -811,6 +826,9 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
     }
 
     cenv.functions[fenv.function_name] = fenv.return_type;
+    cenv.signatures[fenv.function_name] = FunctionSignature(fenv.function_name, fenv.return_type);
+    cenv.signatures[fenv.function_name].parameters = fenv.parameters;
+    cenv.signatures[fenv.function_name].parameter_types = fenv.parameter_types;
 
     if (tokens[offset+number_of_processed_tokens] != "{") {
         throw InvalidSyntax((offset+number_of_processed_tokens), ("missing opening 'begin' in definition of function " + fenv.function_name));
