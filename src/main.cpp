@@ -46,9 +46,7 @@ class InvalidSyntax: public Exception {
         string message;
     public:
         string what() const override {
-            ostringstream oss;
-            oss << "invalid syntax on token " << token_no << ": " << message;
-            return oss.str();
+            return message;
         }
         decltype(token_no) tokenIndex() const {
             return token_no;
@@ -1102,12 +1100,6 @@ void processSource(const TokenVector& tokens, ostringstream& output) {
 }
 
 
-void annotateInvalidToken(const vector<string>& tokens, vector<string>::size_type no) {
-    for (vector<string>::size_type i = 0; i < tokens.size(); ++i) {
-        cout << ((i == no) ? ">>> " : "    ") << support::str::strencode(tokens[i]) << endl;
-    }
-}
-
 int main(int argc, char **argv) {
     // setup command line arguments vector
     vector<string> args;
@@ -1148,10 +1140,16 @@ int main(int argc, char **argv) {
         ofstream compile_output(compilename);
         compile_output << out.str();
     } catch (const InvalidSyntax& e) {
-        cout << "fatal: " << e.what() << endl;
-        //annotateInvalidToken(decommented_tokens, e.tokenIndex());
-        cout << "\nsource generated so far:" << endl;
-        cout << out.str() << endl;
+        cout << compilename << ':' << toks[e.tokenIndex()].line()+1 << ':' << toks[e.tokenIndex()].character()+1 << ": invalid syntax: " << e.what() << endl;
+        istringstream in(source_text);
+        string line;
+        unsigned i = 0;
+        while (getline(in, line)) {
+            if (i++ == toks[e.tokenIndex()].line()) {
+                cout << line << endl;
+                break;
+            }
+        }
         return 1;
     }
 
