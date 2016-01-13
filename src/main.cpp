@@ -1140,10 +1140,10 @@ int main(int argc, char **argv) {
         ofstream compile_output(compilename);
         compile_output << out.str();
     } catch (const InvalidSyntax& e) {
-        cout << compilename << ':' << toks[e.tokenIndex()].line()+1 << ':' << toks[e.tokenIndex()].character()+1 << ": invalid syntax: " << e.what() << endl;
+        cout << compilename << ':' << toks[e.tokenIndex()].line()+1 << ':' << toks[e.tokenIndex()].character()+1 << ": " << e.what() << endl;
         istringstream in(source_text);
         string line;
-        unsigned i = 0, tline = toks[e.tokenIndex()].line();
+        int i = 0, tline = toks[e.tokenIndex()].line();
         while (getline(in, line)) {
             if (i >= tline-1 and i <= tline+1) {
                 cout << ((i == tline) ? "->  " : "    ") << line << endl;
