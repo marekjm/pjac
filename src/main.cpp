@@ -75,6 +75,12 @@ class Token {
             byte_number(bn),
             token_string(s) {
             }
+        Token():
+            line_number(0),
+            character_number(0),
+            byte_number(0),
+            token_string("") {
+            }
 };
 
 
@@ -566,6 +572,104 @@ namespace support {
 
             return tokens;
         }
+
+        Token getToken(ostringstream& t, string::size_type line_no, string::size_type char_no, string::size_type byte_no) {
+            string tok = t.str();
+            return Token(tok, line_no, (char_no - tok.size()), (byte_no - tok.size()));
+        }
+        Token getToken(const string& tok, string::size_type line_no, string::size_type char_no, string::size_type byte_no) {
+            return Token(tok, line_no, (char_no - tok.size()), (byte_no - tok.size()));
+        }
+
+        vector<Token> lex(const string& s) {
+            vector<Token> tokens;
+            ostringstream token;
+            string::size_type i = 0;
+
+            string::size_type line_no = 0;
+            string::size_type byte_no = 0;
+            string::size_type char_no = 0;
+
+            char c; // for by-character extraction
+            string tk; // for string extraction
+            while (i < s.size()) {
+                ++byte_no;
+                ++char_no;
+                c = s[i];
+                switch (c) {
+                    case ' ':
+                    case '\t':
+                        if (token.str().size() != 0) {
+                            tokens.push_back(getToken(token, line_no, char_no, byte_no));
+                            token.str("");
+                        }
+                        break;
+                    case '\n':
+                    case '(':
+                    case ')':
+                    case '[':
+                    case ']':
+                    case '{':
+                    case '}':
+                    case '<':
+                    case '>':
+                    case '~':
+                    case '!':
+                    case '@':
+                    case '#':
+                    case '$':
+                    case '%':
+                    case '^':
+                    case '&':
+                    case '*':
+                    case '-':
+                    case '+':
+                    case '=':
+                    case '|':
+                    case '\\':
+                    case ':':
+                    case ';':
+                    case ',':
+                    case '.':
+                    case '?':
+                    case '/':
+                        if (token.str().size() != 0) {
+                            tokens.push_back(getToken(token, line_no, char_no, byte_no));
+                            token.str("");
+                        }
+                        token << c;
+                        tokens.push_back(getToken(token, line_no, char_no, byte_no));
+                        token.str("");
+                        if (c == '\n') {
+                            ++line_no;
+                            char_no = 0;
+                        }
+                        break;
+                    case '"':
+                    case '\'':
+                        if (token.str().size() != 0) {
+                            tokens.push_back(getToken(token, line_no, char_no, byte_no));
+                            token.str("");
+                        }
+                        tk = support::str::extract(s.substr(i));
+                        // -1 to not consume the next token as it
+                        // may be meaningful (e.g. a semicolon)
+                        i += (tk.size()-1);
+                        tokens.push_back(getToken(tk, line_no, char_no, byte_no));
+                        break;
+                    default:
+                        token << c;
+                        break;
+                }
+                ++i;
+            }
+
+            if (token.str().size()) {
+                tokens.push_back(getToken(token, line_no, char_no, byte_no));
+            }
+
+            return tokens;
+        }
     }
 }
 
@@ -991,6 +1095,13 @@ int main(int argc, char **argv) {
     }
 
     string source_text = support::io::readfile(filename);
+
+    auto toks = support::str::lex(source_text);
+    for (decltype(toks)::size_type i = 0; i < toks.size(); ++i) {
+        cout << toks[i].line() << ':' << toks[i].character() << ": " << support::str::strencode(toks[i].text()) << endl;
+    }
+
+    return 0;
 
     vector<string> primitive_tokens = support::str::tokenize(source_text);
     vector<string> decommented_tokens = removeComments(primitive_tokens);
