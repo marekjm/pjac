@@ -754,8 +754,52 @@ vector<string>::size_type processFunction(const vector<string>& tokens, vector<s
 
     FunctionEnvironment fenv(tokens[offset + (number_of_processed_tokens++)], &cenv);
 
-    if ((offset+number_of_processed_tokens+2) >= tokens.size() or tokens[offset+number_of_processed_tokens] != "-" or tokens[offset+number_of_processed_tokens+1] != ">") {
-        throw InvalidSyntax((offset+number_of_processed_tokens), ("missing return type specifier in definition of function " + fenv.function_name));
+    if ((offset+number_of_processed_tokens+2) >= tokens.size() or tokens[offset+number_of_processed_tokens] !=  "(") {
+        throw InvalidSyntax((offset+number_of_processed_tokens), ("missing parameter list in definition of function " + fenv.function_name));
+    }
+
+
+    // skip opening "("
+    ++number_of_processed_tokens;
+
+    decltype(offset) i = offset+number_of_processed_tokens;
+    string param_name, param_type;
+    for (; i < tokens.size() and tokens[i] != ")"; ++i) {
+        param_type = tokens[i++];
+        param_name = tokens[i];
+        fenv.parameters.push_back(param_name);
+        fenv.parameter_types[param_name] = param_type;
+        if (tokens[i+1] == ",") {
+            ++i;
+        } else if (tokens[i+1] == ")") {
+            // explicitly do nothing
+        } else {
+            throw InvalidSyntax(i, ("unexpected token in parameters list of function " + fenv.function_name + ": " + tokens[i]));
+        }
+        number_of_processed_tokens += 3;
+    }
+
+    // this if is in case the function has no parameters and
+    // must be here because the for above wasn't entered
+    if (tokens[offset+number_of_processed_tokens] == ")") {
+        ++number_of_processed_tokens;
+    }
+
+    if ((offset+number_of_processed_tokens+2) >= tokens.size()) {
+        throw InvalidSyntax((offset+number_of_processed_tokens), ("unexpected end of token stream in definition of function " + fenv.function_name));
+    }
+    if (tokens[offset+number_of_processed_tokens] != "-" or tokens[offset+number_of_processed_tokens+1] != ">") {
+        throw InvalidSyntax(
+                (offset+number_of_processed_tokens),
+                ("missing return type specifier in definition of function " + fenv.function_name +
+                 ", expected '->' but got: '" +
+                 support::str::strencode(tokens[offset+number_of_processed_tokens]) +
+                 support::str::strencode(tokens[offset+number_of_processed_tokens+1]) +
+                 "'\ntwo previous tokens: " +
+                 support::str::strencode(tokens[offset+number_of_processed_tokens-2]) +
+                 support::str::strencode(tokens[offset+number_of_processed_tokens-1]) +
+                 ""
+                 ));
     }
 
     // skip over "-" and ">" that make up return type specifier
