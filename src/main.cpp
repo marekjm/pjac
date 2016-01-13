@@ -1143,12 +1143,15 @@ int main(int argc, char **argv) {
         cout << compilename << ':' << toks[e.tokenIndex()].line()+1 << ':' << toks[e.tokenIndex()].character()+1 << ": invalid syntax: " << e.what() << endl;
         istringstream in(source_text);
         string line;
-        unsigned i = 0;
+        unsigned i = 0, tline = toks[e.tokenIndex()].line();
         while (getline(in, line)) {
-            if (i++ == toks[e.tokenIndex()].line()) {
-                cout << line << endl;
+            if (i >= tline-1 and i <= tline+1) {
+                cout << ((i == tline) ? "->  " : "    ") << line << endl;
+            }
+            if (i == tline+1) {
                 break;
             }
+            ++i;
         }
         return 1;
     }
