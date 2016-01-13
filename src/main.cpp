@@ -1072,7 +1072,7 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
             } else if (fenv.variable_registers.count(tokens[offset+number_of_processed_tokens]) and tokens[offset+number_of_processed_tokens+1] == "=" and tokens[offset+number_of_processed_tokens+3] == "(") {
                 number_of_processed_tokens += processCallWithReturnValueUsed(tokens, (offset+number_of_processed_tokens), fenv, output);
             } else {
-                throw InvalidSyntax((offset+number_of_processed_tokens), "other error");
+                throw InvalidSyntax((offset+number_of_processed_tokens), "unexpected token");
             }
         }
     }
