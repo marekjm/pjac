@@ -726,18 +726,10 @@ vector<string>::size_type processFrame(const vector<string>& tokens, const strin
 
         string p_name = fenv.env->signatures.at(function_to_call).parameters[parameter_sources.size()];
         string p_type = fenv.env->signatures.at(function_to_call).parameter_types.at(p_name);
-        if (p_type != fenv.variable_types.at(tokens[i])) {
-            throw InvalidSyntax(i,
-                    ("invalid type for parameter " +
-                     p_name +
-                     " expected " + p_type + " but got " + fenv.variable_types.at(tokens[i])
-                     )
-                    );
+        if (p_type != "undefined" and p_type != fenv.variable_types.at(tokens[i])) {
+            throw InvalidSyntax(i, ("invalid type for parameter " + p_name + " expected " + p_type + " but got " + fenv.variable_types.at(tokens[i])));
         }
-        /* if (fenv.variable_types.at(tokens[i]) != fenv.env->signatures.at(function_to_call).parameter_types.) { */
-        /*     cout << "fatal: undefined name as parameter: `" << tokens[i] << "` in call to function `" << function_to_call << '`' << endl; */
-        /*     exit(1); */
-        /* } */
+
         parameter_sources.push_back(fenv.variable_registers.at(tokens[i]));
         // account for both "," between parameters and
         // closing ")"
