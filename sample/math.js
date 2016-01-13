@@ -1,12 +1,12 @@
-function add -> int {
+function add(int first, int second) -> int {
     var int a;
     asm iadd 0 (arg 1 0) (arg 2 1);
     return a;
 }
 
-function print -> void { asm print (arg 1 0); }
+function print(undefined msg) -> void { asm print (arg 1 0); }
 
-function main -> int {
+function main() -> int {
     {
         var int a = 20;
         var int b = 22;
