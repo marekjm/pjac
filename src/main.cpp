@@ -703,6 +703,9 @@ vector<string>::size_type processFrame(const vector<string>& tokens, const strin
     vector<unsigned> parameter_sources;
 
     if (tokens[i] == ")") {
+        if (fenv.env->signatures.at(function_to_call).parameters.size() != 0) {
+            throw InvalidSyntax(i, ("missing parameters in call to function " + function_to_call));
+        }
         output << "    frame 0" << endl;
         return 2; // number of processed tokens is 2: "(" and ";"
     }
@@ -712,10 +715,33 @@ vector<string>::size_type processFrame(const vector<string>& tokens, const strin
             cout << "fatal: undefined name as parameter: `" << tokens[i] << "` in call to function `" << function_to_call << '`' << endl;
             exit(1);
         }
+
+        if (parameter_sources.size() >= fenv.env->signatures.at(function_to_call).parameters.size()) {
+            throw InvalidSyntax(i, ("too many parameters in call to function " + function_to_call));
+        }
+
+        string p_name = fenv.env->signatures.at(function_to_call).parameters[parameter_sources.size()];
+        string p_type = fenv.env->signatures.at(function_to_call).parameter_types.at(p_name);
+        if (p_type != fenv.variable_types.at(tokens[i])) {
+            throw InvalidSyntax(i,
+                    ("invalid type for parameter " +
+                     p_name +
+                     " expected " + p_type + " but got " + fenv.variable_types.at(tokens[i])
+                     )
+                    );
+        }
+        /* if (fenv.variable_types.at(tokens[i]) != fenv.env->signatures.at(function_to_call).parameter_types.) { */
+        /*     cout << "fatal: undefined name as parameter: `" << tokens[i] << "` in call to function `" << function_to_call << '`' << endl; */
+        /*     exit(1); */
+        /* } */
         parameter_sources.push_back(fenv.variable_registers.at(tokens[i]));
         // account for both "," between parameters and
         // closing ")"
         ++i;
+    }
+
+    if (fenv.env->signatures.at(function_to_call).parameters.size() != parameter_sources.size()) {
+        throw InvalidSyntax(i, ("missing parameters in call to function " + function_to_call));
     }
 
     output << "    frame ^[";
