@@ -593,8 +593,6 @@ namespace support {
             char c; // for by-character extraction
             string tk; // for string extraction
             while (i < s.size()) {
-                ++byte_no;
-                ++char_no;
                 c = s[i];
                 switch (c) {
                     case ' ':
@@ -661,6 +659,8 @@ namespace support {
                         token << c;
                         break;
                 }
+                ++byte_no;
+                ++char_no;
                 ++i;
             }
 
