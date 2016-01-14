@@ -1001,7 +1001,7 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
     cenv.signatures[fenv.function_name].parameter_types = fenv.parameter_types;
 
     if (tokens[offset+number_of_processed_tokens] != "{") {
-        throw InvalidSyntax((offset+number_of_processed_tokens), ("missing opening 'begin' in definition of function " + fenv.function_name));
+        throw InvalidSyntax((offset+number_of_processed_tokens), ("missing opening '{' in definition of function " + fenv.function_name));
     }
 
     // skip opening "{"
