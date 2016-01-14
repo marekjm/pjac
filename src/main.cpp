@@ -768,7 +768,10 @@ struct FunctionEnvironment {
 
     bool has_returned;
     unsigned ifs;
+
     unsigned whiles;
+    string loop_begin;
+    string loop_end;
 
     CompilationEnvironment *env;
 
@@ -795,6 +798,8 @@ struct FunctionEnvironment {
         has_returned(false),
         ifs(0),
         whiles(0),
+        loop_begin(""),
+        loop_end(""),
         env(ce) {
         }
 };
@@ -886,6 +891,8 @@ TokenVectorSize processVariable(const TokenVector& tokens, TokenVectorSize offse
     fenv.variable_types[var_name] = var_type;
 
     ++i;
+
+    output << "    .name: " << var_register << ' ' << var_name << '\n';
 
     if (tokens[i] == ";") {
         if (var_type == "int") {
@@ -1022,7 +1029,7 @@ TokenVectorSize processCallWithReturnValueUsed(const TokenVector& tokens, TokenV
     return i;
 }
 
-TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, FunctionEnvironment& fenv, ostringstream& output, const string& loop_name_end = "");
+TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, FunctionEnvironment& fenv, ostringstream& output);
 
 TokenVectorSize processIfStatement(const TokenVector& tokens, TokenVectorSize offset, FunctionEnvironment& fenv, ostringstream& output) {
     TokenVectorSize i = offset;
@@ -1066,6 +1073,11 @@ TokenVectorSize processWhileStatement(const TokenVector& tokens, TokenVectorSize
     string loop_name_begin = ("__" + fenv.function_name + "_begin_while_" + support::str::stringify(fenv.whiles++));
     string loop_name_end = ("__" + fenv.function_name + "_end_while_" + support::str::stringify(fenv.whiles++));
 
+    string prev_loop_begin = fenv.loop_begin;
+    string prev_loop_end = fenv.loop_end;
+    fenv.loop_begin = loop_name_begin;
+    fenv.loop_end = loop_name_end;
+
     if (tokens[i] != "{") {
         throw InvalidSyntax(i, ("missing opening '{' in while-statement in function " + fenv.header()));
     }
@@ -1075,10 +1087,13 @@ TokenVectorSize processWhileStatement(const TokenVector& tokens, TokenVectorSize
     output << "    branch " << fenv.variable_registers[if_test_variable_name] << ' ';
     output << "+1 " << loop_name_end << '\n';
 
-    i += processBlock(tokens, i, fenv, output, loop_name_end);
+    i += processBlock(tokens, i, fenv, output);
 
     output << "    jump " << loop_name_begin << '\n';
     output << "    .mark: " << loop_name_end << '\n';
+
+    fenv.loop_begin = prev_loop_begin;
+    fenv.loop_end = prev_loop_end;
 
     return (i - offset);
 }
@@ -1186,7 +1201,7 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
     return number_of_processed_tokens;
 }
 
-TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, FunctionEnvironment& fenv, ostringstream& output, const string& loop_name_end) {
+TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, FunctionEnvironment& fenv, ostringstream& output) {
     TokenVectorSize number_of_processed_tokens = 0;
 
     for (; number_of_processed_tokens+offset < tokens.size() and fenv.begin_balance; ++number_of_processed_tokens) {
@@ -1243,10 +1258,10 @@ TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, 
             --fenv.begin_balance;
             break;
         } else if (tokens[offset+number_of_processed_tokens] == "break") {
-            if (loop_name_end == "") {
+            if (fenv.loop_end == "") {
                 throw InvalidSyntax((offset+number_of_processed_tokens), ("break outside of loop inside function " + fenv.header()));
             }
-            output << "    jump " << loop_name_end << '\n';
+            output << "    jump " << fenv.loop_end << '\n';
         } else if (tokens[offset+number_of_processed_tokens] == "if") {
             number_of_processed_tokens += processIfStatement(tokens, (offset + (++number_of_processed_tokens)), fenv, output);
         } else if (tokens[offset+number_of_processed_tokens] == "while") {
