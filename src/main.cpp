@@ -967,10 +967,10 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
         ++number_of_processed_tokens;
     }
 
-    if ((offset+number_of_processed_tokens+2) >= tokens.size()) {
+    if ((offset+number_of_processed_tokens+2) >= tokens.size() and tokens[offset+number_of_processed_tokens] != "{") {
         throw InvalidSyntax((offset+number_of_processed_tokens), ("unexpected end of token stream in definition of function " + fenv.function_name));
     }
-    if (tokens[offset+number_of_processed_tokens] != "-" or tokens[offset+number_of_processed_tokens+1] != ">") {
+    if ((tokens[offset+number_of_processed_tokens] != "-" or tokens[offset+number_of_processed_tokens+1] != ">") and tokens[offset+number_of_processed_tokens] != "{") {
         throw InvalidSyntax(
                 (offset+number_of_processed_tokens),
                 ("missing return type specifier in definition of function " + fenv.function_name +
@@ -985,11 +985,14 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
     }
 
     // skip over "-" and ">" that make up return type specifier
-    number_of_processed_tokens += 2;
-
-    fenv.return_type = tokens[offset + (number_of_processed_tokens++)];
-    if (fenv.return_type != "void" and fenv.return_type != "string" and fenv.return_type != "int" and fenv.return_type != "float") {
-        throw InvalidSyntax((offset+number_of_processed_tokens), ("invalid return type in definition of function " + fenv.function_name));
+    if (tokens[offset+number_of_processed_tokens] == "-") {
+        number_of_processed_tokens += 2;
+        fenv.return_type = tokens[offset + (number_of_processed_tokens++)];
+        if (fenv.return_type != "void" and fenv.return_type != "string" and fenv.return_type != "int" and fenv.return_type != "float") {
+            throw InvalidSyntax((offset+number_of_processed_tokens), ("invalid return type in definition of function " + fenv.function_name));
+        }
+    } else {
+        fenv.return_type = "void";
     }
 
     cenv.functions[fenv.function_name] = fenv.return_type;
