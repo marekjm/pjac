@@ -749,11 +749,14 @@ struct FunctionEnvironment {
     unsigned begin_balance;
     string function_name;
 
+    bool has_returned;
+
     CompilationEnvironment *env;
 
     FunctionEnvironment(const string& s, CompilationEnvironment* ce):
         begin_balance(0),
         function_name(s),
+        has_returned(false),
         env(ce) {
         }
 };
@@ -965,6 +968,8 @@ TokenVectorSize processCallWithReturnValueUsed(const TokenVector& tokens, TokenV
     return i;
 }
 
+TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, FunctionEnvironment& fenv, ostringstream& output);
+
 TokenVectorSize processIfStatement(const TokenVector& tokens, TokenVectorSize offset, FunctionEnvironment& fenv, ostringstream& output) {
     TokenVectorSize i = offset;
 
@@ -1062,8 +1067,6 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
     ++number_of_processed_tokens;
     ++fenv.begin_balance;
 
-    bool has_returned = false;
-
     output << ".function: " << fenv.function_name << endl;
 
     for (decltype(FunctionEnvironment::parameters)::size_type i = 0; i < fenv.parameters.size(); ++i) {
@@ -1073,11 +1076,24 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
         fenv.variable_types[fenv.parameters[i]] = fenv.parameter_types[fenv.parameters[i]];
     }
 
+    number_of_processed_tokens += processBlock(tokens, (offset+number_of_processed_tokens), fenv, output);
+
+    if (not fenv.has_returned) {
+        output << "    end" << endl;
+    }
+    output << ".end" << endl;
+
+    return number_of_processed_tokens;
+}
+
+TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, FunctionEnvironment& fenv, ostringstream& output) {
+    TokenVectorSize number_of_processed_tokens = 0;
+
     for (; number_of_processed_tokens+offset < tokens.size() and fenv.begin_balance; ++number_of_processed_tokens) {
         if (tokens[offset+number_of_processed_tokens] == "var") {
             number_of_processed_tokens += processVariable(tokens, (offset + (++number_of_processed_tokens)), fenv, output);
         } else if (tokens[offset+number_of_processed_tokens] == "return") {
-            has_returned = true;
+            fenv.has_returned = true;
 
             // skip "return" keyword
             ++number_of_processed_tokens;
@@ -1142,11 +1158,6 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
             }
         }
     }
-
-    if (not has_returned) {
-        output << "    end" << endl;
-    }
-    output << ".end" << endl;
 
     return number_of_processed_tokens;
 }
