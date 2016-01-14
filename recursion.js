@@ -14,7 +14,11 @@ function main() -> int {
     i = returnTheIntegerIGaveYou(answer);
     print(i);
 
-    if i {
+    var int c;
+
+    if c {
+        var string hell_yeah = "Hell yeah!";
+        print(hell_yeah);
     }
 
     return 0;
