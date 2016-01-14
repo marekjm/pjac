@@ -1095,6 +1095,9 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
     if (not fenv.has_returned) {
         output << "    end" << endl;
     }
+    if (not fenv.has_returned and fenv.return_type != "void") {
+        throw InvalidSyntax(i, ("function " + fenv.function_name + " declared return type " + fenv.return_type + " but reached end of definition without return statement"));
+    }
     output << ".end" << endl;
 
     return number_of_processed_tokens;
