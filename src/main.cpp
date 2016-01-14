@@ -750,6 +750,7 @@ struct FunctionEnvironment {
     string function_name;
 
     bool has_returned;
+    unsigned ifs;
 
     CompilationEnvironment *env;
 
@@ -757,6 +758,7 @@ struct FunctionEnvironment {
         begin_balance(0),
         function_name(s),
         has_returned(false),
+        ifs(0),
         env(ce) {
         }
 };
@@ -980,15 +982,20 @@ TokenVectorSize processIfStatement(const TokenVector& tokens, TokenVectorSize of
         throw InvalidSyntax(i, ("undeclared variable in condition experssion: " + tokens[i].text()));
     }
 
-    // skip the next token for now
-    ++i;
+    string if_test_variable_name = tokens[i++];
+    string false_branch_name = ("__" + fenv.function_name + "_if_" + support::str::stringify(fenv.ifs++));
 
     if (tokens[i] != "{") {
         throw InvalidSyntax(i, ("missing opening '{' in if-statement in function " + fenv.function_name));
     }
     ++fenv.begin_balance;
 
+    output << "    branch " << fenv.variable_registers[if_test_variable_name] << ' ';
+    output << "+1 " << false_branch_name << '\n';
+
     i += processBlock(tokens, i, fenv, output);
+
+    output << "    .mark: " << false_branch_name << '\n';
 
     return (i - offset);
 }
@@ -1148,6 +1155,7 @@ TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, 
             ++fenv.begin_balance;
         } else if (tokens[offset+number_of_processed_tokens] == "}") {
             --fenv.begin_balance;
+            break;
         } else if (tokens[offset+number_of_processed_tokens] == "if") {
             number_of_processed_tokens += processIfStatement(tokens, (offset + (++number_of_processed_tokens)), fenv, output);
         } else {
