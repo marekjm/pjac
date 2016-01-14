@@ -1100,6 +1100,10 @@ void processSource(const TokenVector& tokens, ostringstream& output) {
         }
         previous_token = token;
     }
+
+    if (cenv.signatures.count("main") == 0) {
+        cout << "warning: main()->int function was not defined" << endl;
+    }
 }
 
 
