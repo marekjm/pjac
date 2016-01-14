@@ -805,7 +805,9 @@ TokenVectorSize processVariable(const TokenVector& tokens, TokenVectorSize offse
 
     var_type = tokens[i];
     var_name = tokens[++i];
-    var_register = fenv.variable_registers.size();
+
+    // never store in register 0, if the value is not for return
+    var_register = fenv.variable_registers.size()+1;
 
     fenv.variable_registers[var_name] = var_register;
     fenv.variable_types[var_name] = var_type;
