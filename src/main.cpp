@@ -1110,6 +1110,10 @@ void processSource(const TokenVector& tokens, ostringstream& output) {
         token = tokens[i];
         if (token == "function") {
             i += processFunction(tokens, ++i, cenv, output);
+        } else if(token == "\n") {
+            // explicitly do nothing
+        } else {
+            throw InvalidSyntax(i, ("invalid top-level token: " + support::str::strencode(tokens[i].text())));
         }
         previous_token = token;
     }
