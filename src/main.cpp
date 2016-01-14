@@ -970,7 +970,7 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
     if ((offset+number_of_processed_tokens+2) >= tokens.size() and tokens[offset+number_of_processed_tokens] != "{") {
         throw InvalidSyntax((offset+number_of_processed_tokens), ("unexpected end of token stream in definition of function " + fenv.function_name));
     }
-    if ((tokens[offset+number_of_processed_tokens] != "-" or tokens[offset+number_of_processed_tokens+1] != ">") and tokens[offset+number_of_processed_tokens] != "{") {
+    if ((tokens[offset+number_of_processed_tokens] != "-" or tokens[offset+number_of_processed_tokens+1] != ">") and tokens[offset+number_of_processed_tokens] != "{" and tokens[offset+number_of_processed_tokens] != ";") {
         throw InvalidSyntax(
                 (offset+number_of_processed_tokens),
                 ("missing return type specifier in definition of function " + fenv.function_name +
@@ -999,6 +999,10 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
     cenv.signatures[fenv.function_name] = FunctionSignature(fenv.function_name, fenv.return_type);
     cenv.signatures[fenv.function_name].parameters = fenv.parameters;
     cenv.signatures[fenv.function_name].parameter_types = fenv.parameter_types;
+
+    if (tokens[offset+number_of_processed_tokens] == ";") {
+        return ++number_of_processed_tokens;
+    }
 
     if (tokens[offset+number_of_processed_tokens] != "{") {
         throw InvalidSyntax((offset+number_of_processed_tokens), ("missing opening '{' in definition of function " + fenv.function_name));
