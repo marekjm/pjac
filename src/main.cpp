@@ -1019,6 +1019,8 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
     for (decltype(FunctionEnvironment::parameters)::size_type i = 0; i < fenv.parameters.size(); ++i) {
         output << "    .name: " << i+1 << ' ' << fenv.parameters[i] << endl;
         output << "    arg " << i+1 << ' ' << i << endl;
+        fenv.variable_registers[fenv.parameters[i]] = i+1;
+        fenv.variable_types[fenv.parameters[i]] = fenv.parameter_types[fenv.parameters[i]];
     }
 
     for (; number_of_processed_tokens+offset < tokens.size() and fenv.begin_balance; ++number_of_processed_tokens) {
