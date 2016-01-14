@@ -966,7 +966,19 @@ TokenVectorSize processCallWithReturnValueUsed(const TokenVector& tokens, TokenV
 }
 
 TokenVectorSize processIfStatement(const TokenVector& tokens, TokenVectorSize offset, FunctionEnvironment& fenv, ostringstream& output) {
-    return 1;
+    TokenVectorSize i = offset;
+
+    if (not support::str::isname(tokens[i])) {
+        throw InvalidSyntax(i, ("unexpected token in condition experssion: " + tokens[i].text()));
+    }
+    if (fenv.variable_registers.count(tokens[i]) == 0) {
+        throw InvalidSyntax(i, ("undeclared variable in condition experssion: " + tokens[i].text()));
+    }
+
+    // skip the next token for now
+    ++i;
+
+    return (i - offset);
 }
 
 TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offset, CompilationEnvironment& cenv, ostringstream& output) {
@@ -1114,7 +1126,7 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
         } else if (tokens[offset+number_of_processed_tokens] == "}") {
             --fenv.begin_balance;
         } else if (tokens[offset+number_of_processed_tokens] == "if") {
-            number_of_processed_tokens += processIfStatement(tokens, (offset + number_of_processed_tokens), fenv, output);
+            number_of_processed_tokens += processIfStatement(tokens, (offset + (++number_of_processed_tokens)), fenv, output);
         } else {
             if ((offset+number_of_processed_tokens+3) >= tokens.size()) {
                 throw InvalidSyntax(
