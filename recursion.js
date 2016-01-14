@@ -14,7 +14,7 @@ function main() -> int {
     i = returnTheIntegerIGaveYou(answer);
     print(i);
 
-    if;
+    if i;
 
     return 0;
 }
