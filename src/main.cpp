@@ -252,6 +252,38 @@ namespace support {
             return num;
         }
 
+        bool isalpha(const std::string& s) {
+            /** Returns true if s contains only letters.
+             */
+            bool is_alpha = true;
+            for (std::string::size_type i = 0; i < s.size(); ++i) {
+                if (not ((s[i] >= 'A' and s[i] <= 'Z') or (s[i] >= 'a' and s[i] <= 'z'))) {
+                    is_alpha = false;
+                    break;
+                }
+            }
+            return is_alpha;
+        }
+
+        bool isname(const std::string& s) {
+            /** Returns true if s is a valid name.
+             */
+            if (s.size() == 0) {
+                return false;
+            }
+            if (not isalpha(s.substr(0, 1))) {
+                return false;
+            }
+            bool is_name = true;
+            for (std::string::size_type i = 1; i < s.size(); ++i) {
+                if (not ((s[i] >= 'A' and s[i] <= 'Z') or (s[i] >= 'a' and s[i] <= 'z') or (s[i] >= '0' and s[i] <= '9') or s[i] == '_')) {
+                    is_name = false;
+                    break;
+                }
+            }
+            return is_name;
+        }
+
         bool isfloat(const std::string& s, bool negatives = true) {
             /*  Returns true if s contains only numerical characters.
              *  Regex equivalent: `^[0-9]+\.[0-9]+$`
