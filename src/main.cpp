@@ -892,6 +892,11 @@ TokenVectorSize processVariable(const TokenVector& tokens, TokenVectorSize offse
             var_value = "''";
         } else if (var_type == "float") {
             var_value = "0.0";
+        } else if (var_type == "bool") {
+            var_value = "false";
+        } else {
+            throw InvalidSyntax(i, ("invalid type of variable " + var_name + " in definition of function " +
+                        fenv.header() + ": " + var_type));
         }
     } else if (tokens[i] == "=") {
         var_value = tokens[++i];
@@ -911,7 +916,18 @@ TokenVectorSize processVariable(const TokenVector& tokens, TokenVectorSize offse
         } else if (var_type == "float") {
             output << "fstore";
         }
-        output << ' ' << var_register << ' ' << var_value << endl;
+        if (var_type == "bool") {
+            if (var_value == "false" or var_value == "0") {
+                output << "not (not (istore " << var_register << " 0))" << endl;
+            } else if (var_value == "true" or var_value == "1") {
+                output << "not (istore " << var_register << " 0)" << endl;
+            } else {
+                throw InvalidSyntax(offset, ("invalid boolean literal in initialisation of variable " +
+                            var_name + " in function " + fenv.header() + ": " + var_value));
+            }
+        } else {
+            output << ' ' << var_register << ' ' << var_value << endl;
+        }
     }
 
     return (i-offset);
@@ -1091,7 +1107,7 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
         // skip over "-" and ">" that make up return type specifier
         number_of_processed_tokens += 2;
         fenv.return_type = tokens[offset + (number_of_processed_tokens++)];
-        if (fenv.return_type != "void" and fenv.return_type != "string" and fenv.return_type != "int" and fenv.return_type != "float") {
+        if (fenv.return_type != "void" and fenv.return_type != "string" and fenv.return_type != "int" and fenv.return_type != "float" and fenv.return_type != "bool") {
             throw InvalidSyntax((offset+number_of_processed_tokens), ("invalid return type in definition of function " + fenv.function_name));
         }
     } else {
