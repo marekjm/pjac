@@ -754,6 +754,23 @@ struct FunctionEnvironment {
 
     CompilationEnvironment *env;
 
+    string header(bool full = false) const {
+        ostringstream oss;
+        oss << function_name << '(';
+        auto limit = (parameters.size()-1);
+        for (vector<string>::size_type i = 0; i < parameters.size(); ++i) {
+            oss << parameter_types.at(parameters[i]);
+            if (full) {
+                oss << ' ' << parameters[i];
+            }
+            if (i < limit) {
+                oss << ", ";
+            }
+        }
+        oss << ")->" << return_type;
+        return oss.str();
+    }
+
     FunctionEnvironment(const string& s, CompilationEnvironment* ce):
         begin_balance(0),
         function_name(s),
@@ -1096,7 +1113,7 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
         output << "    end" << endl;
     }
     if (not fenv.has_returned and fenv.return_type != "void") {
-        throw InvalidSyntax(i, ("function " + fenv.function_name + " declared return type " + fenv.return_type + " but reached end of definition without return statement"));
+        throw InvalidSyntax(i, ("function " + fenv.header() + " declared return type " + fenv.return_type + " but reached end of definition without return statement"));
     }
     output << ".end" << endl;
 
