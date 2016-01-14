@@ -933,6 +933,10 @@ TokenVectorSize processCallWithReturnValueUsed(const TokenVector& tokens, TokenV
     return i;
 }
 
+TokenVectorSize processIfStatement(const TokenVector& tokens, TokenVectorSize offset, FunctionEnvironment& fenv, ostringstream& output) {
+    return 1;
+}
+
 TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offset, CompilationEnvironment& cenv, ostringstream& output) {
     TokenVectorSize number_of_processed_tokens = 0;
 
@@ -1077,6 +1081,8 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
             ++fenv.begin_balance;
         } else if (tokens[offset+number_of_processed_tokens] == "}") {
             --fenv.begin_balance;
+        } else if (tokens[offset+number_of_processed_tokens] == "if") {
+            number_of_processed_tokens += processIfStatement(tokens, (offset + number_of_processed_tokens), fenv, output);
         } else {
             if ((offset+number_of_processed_tokens+3) >= tokens.size()) {
                 throw InvalidSyntax(
