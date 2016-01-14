@@ -1,25 +1,23 @@
-function print(undefined msg) {
-    var string a = "Bye World!";
-    asm print msg;
+function echo(undefined msg) { asm echo msg; }
+function print(undefined msg) { asm print msg; }
+function decrement(int a) -> int { asm idec a; return a; }
+
+function recursive(int counter) {
+    var string msg = "counter value is: ";
+    echo(msg);
+    print(counter);
+    counter = decrement(counter);
+    if counter {
+        recursive(counter);
+    }
 }
 
-function returnTheIntegerIGaveYou(int a) -> int { return a; }
-
 function main() -> int {
-    var string a = "Hello World!";
+    var string a = "Woohoo, recursion!";
     print(a);
 
-    var int answer = 42;
-    var int i;
-    i = returnTheIntegerIGaveYou(answer);
-    print(i);
-
-    var int c;
-
-    if c {
-        var string hell_yeah = "Hell yeah!";
-        print(hell_yeah);
-    }
+    var int limit = 10;
+    recursive(limit);
 
     return 0;
 }
