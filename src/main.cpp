@@ -768,6 +768,7 @@ struct FunctionEnvironment {
 
     bool has_returned;
     unsigned ifs;
+    unsigned whiles;
 
     CompilationEnvironment *env;
 
@@ -793,6 +794,7 @@ struct FunctionEnvironment {
         function_name(s),
         has_returned(false),
         ifs(0),
+        whiles(0),
         env(ce) {
         }
 };
@@ -1020,7 +1022,7 @@ TokenVectorSize processCallWithReturnValueUsed(const TokenVector& tokens, TokenV
     return i;
 }
 
-TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, FunctionEnvironment& fenv, ostringstream& output);
+TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, FunctionEnvironment& fenv, ostringstream& output, const string& loop_name_end = "");
 
 TokenVectorSize processIfStatement(const TokenVector& tokens, TokenVectorSize offset, FunctionEnvironment& fenv, ostringstream& output) {
     TokenVectorSize i = offset;
@@ -1046,6 +1048,37 @@ TokenVectorSize processIfStatement(const TokenVector& tokens, TokenVectorSize of
     i += processBlock(tokens, i, fenv, output);
 
     output << "    .mark: " << false_branch_name << '\n';
+
+    return (i - offset);
+}
+
+TokenVectorSize processWhileStatement(const TokenVector& tokens, TokenVectorSize offset, FunctionEnvironment& fenv, ostringstream& output) {
+    TokenVectorSize i = offset;
+
+    if (not support::str::isname(tokens[i])) {
+        throw InvalidSyntax(i, ("unexpected token in condition experssion: " + tokens[i].text()));
+    }
+    if (fenv.variable_registers.count(tokens[i]) == 0) {
+        throw InvalidSyntax(i, ("undeclared variable in condition experssion: " + tokens[i].text()));
+    }
+
+    string if_test_variable_name = tokens[i++];
+    string loop_name_begin = ("__" + fenv.function_name + "_begin_while_" + support::str::stringify(fenv.whiles++));
+    string loop_name_end = ("__" + fenv.function_name + "_end_while_" + support::str::stringify(fenv.whiles++));
+
+    if (tokens[i] != "{") {
+        throw InvalidSyntax(i, ("missing opening '{' in while-statement in function " + fenv.header()));
+    }
+    ++fenv.begin_balance;
+
+    output << "    .mark: " << loop_name_begin << '\n';
+    output << "    branch " << fenv.variable_registers[if_test_variable_name] << ' ';
+    output << "+1 " << loop_name_end << '\n';
+
+    i += processBlock(tokens, i, fenv, output, loop_name_end);
+
+    output << "    jump " << loop_name_begin << '\n';
+    output << "    .mark: " << loop_name_end << '\n';
 
     return (i - offset);
 }
@@ -1153,7 +1186,7 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
     return number_of_processed_tokens;
 }
 
-TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, FunctionEnvironment& fenv, ostringstream& output) {
+TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, FunctionEnvironment& fenv, ostringstream& output, const string& loop_name_end) {
     TokenVectorSize number_of_processed_tokens = 0;
 
     for (; number_of_processed_tokens+offset < tokens.size() and fenv.begin_balance; ++number_of_processed_tokens) {
@@ -1209,8 +1242,15 @@ TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, 
         } else if (tokens[offset+number_of_processed_tokens] == "}") {
             --fenv.begin_balance;
             break;
+        } else if (tokens[offset+number_of_processed_tokens] == "break") {
+            if (loop_name_end == "") {
+                throw InvalidSyntax((offset+number_of_processed_tokens), ("break outside of loop inside function " + fenv.header()));
+            }
+            output << "    jump " << loop_name_end << '\n';
         } else if (tokens[offset+number_of_processed_tokens] == "if") {
             number_of_processed_tokens += processIfStatement(tokens, (offset + (++number_of_processed_tokens)), fenv, output);
+        } else if (tokens[offset+number_of_processed_tokens] == "while") {
+            number_of_processed_tokens += processWhileStatement(tokens, (offset + (++number_of_processed_tokens)), fenv, output);
         } else {
             if ((offset+number_of_processed_tokens+3) >= tokens.size()) {
                 throw InvalidSyntax(
