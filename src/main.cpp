@@ -983,6 +983,13 @@ TokenVectorSize processIfStatement(const TokenVector& tokens, TokenVectorSize of
     // skip the next token for now
     ++i;
 
+    if (tokens[i] != "{") {
+        throw InvalidSyntax(i, ("missing opening '{' in if-statement in function " + fenv.function_name));
+    }
+    ++fenv.begin_balance;
+
+    i += processBlock(tokens, i, fenv, output);
+
     return (i - offset);
 }
 
