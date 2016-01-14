@@ -724,6 +724,23 @@ struct FunctionSignature {
     vector<string> parameters;
     map<string, string> parameter_types;
 
+    string header(bool full = false) const {
+        ostringstream oss;
+        oss << function_name << '(';
+        auto limit = (parameters.size()-1);
+        for (vector<string>::size_type i = 0; i < parameters.size(); ++i) {
+            oss << parameter_types.at(parameters[i]);
+            if (full) {
+                oss << ' ' << parameters[i];
+            }
+            if (i < limit) {
+                oss << ", ";
+            }
+        }
+        oss << ")->" << return_type;
+        return oss.str();
+    }
+
     FunctionSignature(const string& n, const string& r):
         function_name(n),
         return_type(r)
@@ -910,7 +927,7 @@ TokenVectorSize processFrame(const TokenVector& tokens, const string& function_t
 
     if (tokens[i] == ")") {
         if (fenv.env->signatures.at(function_to_call).parameters.size() != 0) {
-            throw InvalidSyntax(i, ("missing parameters in call to function " + function_to_call));
+            throw InvalidSyntax(i, ("missing parameters in call to function " + fenv.env->signatures.at(function_to_call).header()));
         }
         output << "    frame 0" << endl;
         return 2; // number of processed tokens is 2: "(" and ";"
@@ -938,7 +955,7 @@ TokenVectorSize processFrame(const TokenVector& tokens, const string& function_t
     }
 
     if (fenv.env->signatures.at(function_to_call).parameters.size() != parameter_sources.size()) {
-        throw InvalidSyntax(i, ("missing parameters in call to function " + function_to_call));
+        throw InvalidSyntax(i, ("missing parameters in call to function " + fenv.env->signatures.at(function_to_call).header()));
     }
 
     output << "    frame ^[";
@@ -978,7 +995,7 @@ TokenVectorSize processCallWithReturnValueUsed(const TokenVector& tokens, TokenV
 
     if (fenv.variable_types.at(return_to) != fenv.env->functions.at(function_to_call)) {
         throw InvalidSyntax(offset, (
-                    "mismatched type of return target variable " + return_to + " of type " + fenv.variable_types.at(return_to) + " and return type of function " + function_to_call + "->" + fenv.env->functions.at(function_to_call)));
+                    "mismatched type of return target variable " + return_to + " of type " + fenv.variable_types.at(return_to) + " and return type of function " + fenv.env->signatures.at(function_to_call).header()));
     }
 
     TokenVectorSize i = (processFrame(tokens, function_to_call, offset, fenv, output) + 4);
@@ -1003,7 +1020,7 @@ TokenVectorSize processIfStatement(const TokenVector& tokens, TokenVectorSize of
     string false_branch_name = ("__" + fenv.function_name + "_if_" + support::str::stringify(fenv.ifs++));
 
     if (tokens[i] != "{") {
-        throw InvalidSyntax(i, ("missing opening '{' in if-statement in function " + fenv.function_name));
+        throw InvalidSyntax(i, ("missing opening '{' in if-statement in function " + fenv.header()));
     }
     ++fenv.begin_balance;
 
@@ -1023,7 +1040,7 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
     FunctionEnvironment fenv(tokens[offset + (number_of_processed_tokens++)], &cenv);
 
     if ((offset+number_of_processed_tokens+2) >= tokens.size() or tokens[offset+number_of_processed_tokens] !=  "(") {
-        throw InvalidSyntax((offset+number_of_processed_tokens), ("missing parameter list in definition of function " + fenv.function_name));
+        throw InvalidSyntax((offset+number_of_processed_tokens), ("missing parameter list in definition of function " + fenv.header()));
     }
 
 
@@ -1070,8 +1087,8 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
                  ));
     }
 
-    // skip over "-" and ">" that make up return type specifier
     if (tokens[offset+number_of_processed_tokens] == "-") {
+        // skip over "-" and ">" that make up return type specifier
         number_of_processed_tokens += 2;
         fenv.return_type = tokens[offset + (number_of_processed_tokens++)];
         if (fenv.return_type != "void" and fenv.return_type != "string" and fenv.return_type != "int" and fenv.return_type != "float") {
@@ -1091,7 +1108,7 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
     }
 
     if (tokens[offset+number_of_processed_tokens] != "{") {
-        throw InvalidSyntax((offset+number_of_processed_tokens), ("missing opening '{' in definition of function " + fenv.function_name));
+        throw InvalidSyntax((offset+number_of_processed_tokens), ("missing opening '{' in definition of function " + fenv.header()));
     }
 
     // skip opening "{"
@@ -1137,7 +1154,7 @@ TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, 
                 // this if deals with `return <number> ;` case
                 if (support::str::isnum(tokens[offset+number_of_processed_tokens])) {
                     if (fenv.return_type != "int") {
-                        throw InvalidSyntax((offset+number_of_processed_tokens), ("mismatched return type in function " + fenv.function_name + ", expected " + fenv.return_type + " but got int"));
+                        throw InvalidSyntax((offset+number_of_processed_tokens), ("mismatched return type in function " + fenv.header() + ", expected " + fenv.return_type + " but got int"));
                     }
                     if (tokens[offset+number_of_processed_tokens] == "0") {
                         output << "    izero 0" << endl;
@@ -1146,7 +1163,7 @@ TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, 
                     }
                 } else if (fenv.variable_registers[tokens[offset+number_of_processed_tokens]] != 0) {
                     if (fenv.return_type != fenv.variable_types.at(tokens[offset+number_of_processed_tokens])) {
-                        throw InvalidSyntax((offset+number_of_processed_tokens), ("mismatched return type in function " + fenv.function_name + ", expected " + fenv.return_type + " but got " + fenv.variable_types.at(tokens[offset+number_of_processed_tokens])));
+                        throw InvalidSyntax((offset+number_of_processed_tokens), ("mismatched return type in function " + fenv.header() + ", expected " + fenv.return_type + " but got " + fenv.variable_types.at(tokens[offset+number_of_processed_tokens])));
                     }
                     output << "    move 0 " << fenv.variable_registers[tokens[offset+number_of_processed_tokens]] << endl;
                 }
@@ -1155,7 +1172,7 @@ TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, 
                 ++number_of_processed_tokens;
             } else {
                 if (fenv.return_type != "void") {
-                    throw InvalidSyntax((offset+number_of_processed_tokens), ("mismatched return type in function " + fenv.function_name + ", expected " + fenv.return_type + " but got void"));
+                    throw InvalidSyntax((offset+number_of_processed_tokens), ("mismatched return type in function " + fenv.header() + ", expected " + fenv.return_type + " but got void"));
                 }
             }
 
