@@ -1367,7 +1367,10 @@ TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, 
         } else if (tokens[offset+number_of_processed_tokens] == ";") {
             continue;
         } else if (tokens[offset+number_of_processed_tokens] == "{") {
+            scope->function->begin_balance += 1;
             number_of_processed_tokens += processBlock(tokens, (offset + (++number_of_processed_tokens)), scope, output);
+            // skip closing "}" for nested blocks
+            ++number_of_processed_tokens;
         } else if (tokens[offset+number_of_processed_tokens] == "}") {
             scope->function->begin_balance -= 1;
             break;

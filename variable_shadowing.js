@@ -9,6 +9,10 @@ function main() -> int {
         // defined in local scope of this if-statement
         var string msg = "Oh noes! A bug!";
 
+        {
+            var bool f;
+        }
+
         if msg {
             // should print "Oh noes! A bug!"
             print(msg);
