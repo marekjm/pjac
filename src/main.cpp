@@ -775,6 +775,21 @@ struct Scope {
         return sz;
     }
 
+    vector<string> names() const {
+        vector<string> ns;
+        if (parent) {
+            ns = parent->names();
+        }
+
+        auto p = variable_registers.begin();
+        while (p != variable_registers.end()) {
+            ns.push_back(p->first);
+            ++p;
+        }
+
+        return ns;
+    }
+
     bool defined(const string& name) {
         if (variable_registers.count(name)) {
             return true;
@@ -1016,45 +1031,53 @@ TokenVectorSize processVariable(const TokenVector& tokens, TokenVectorSize offse
     return (i-offset);
 }
 
-TokenVectorSize processFrame(const TokenVector& tokens, const string& function_to_call, TokenVectorSize offset, FunctionEnvironment& fenv, ostringstream& output) {
+TokenVectorSize processFrame(const TokenVector& tokens, const string& function_to_call, TokenVectorSize offset, Scope* scope, ostringstream& output) {
     TokenVectorSize i = offset;
     vector<unsigned> parameter_sources;
 
-    if (fenv.env->signatures.count(function_to_call) == 0) {
+    if (scope->function->env->signatures.count(function_to_call) == 0) {
         throw InvalidSyntax(i, ("call to undefined function " + function_to_call));
     }
 
     if (tokens[i] == ")") {
-        if (fenv.env->signatures.at(function_to_call).parameters.size() != 0) {
-            throw InvalidSyntax(i, ("missing parameters in call to function " + fenv.env->signatures.at(function_to_call).header()));
+        if (scope->function->env->signatures.at(function_to_call).parameters.size() != 0) {
+            throw InvalidSyntax(i, ("missing parameters in call to function " + scope->function->env->signatures.at(function_to_call).header()));
         }
         output << "    frame 0" << endl;
         return 2; // number of processed tokens is 2: "(" and ";"
     }
 
     for (; i < tokens.size() and tokens[i] != ";"; ++i) {
-        if (not fenv.scope->defined(tokens[i])) {
-            throw InvalidSyntax(i, ("undefined name as parameter: `" + tokens[i].text() + "` in call to function `" + function_to_call + "`"));
+        if (not scope->defined(tokens[i])) {
+            ostringstream oss;
+            oss << "undefined name as parameter: `" << tokens[i].text() << "` in call to function `";
+            oss << function_to_call << "`" << "\n";
+            oss << "note: parameters in scope:\n";
+            vector<string> names = scope->names();
+            for (unsigned ps = 0; ps < names.size(); ++ps) {
+                oss << "    " << scope->typeof(names[ps], i) << ' ' << names[ps] << ';' << endl;
+            }
+            throw InvalidSyntax(i, oss.str());
         }
 
-        if (parameter_sources.size() >= fenv.env->signatures.at(function_to_call).parameters.size()) {
+        if (parameter_sources.size() >= scope->function->env->signatures.at(function_to_call).parameters.size()) {
             throw InvalidSyntax(i, ("too many parameters in call to function " + function_to_call));
         }
 
-        string p_name = fenv.env->signatures.at(function_to_call).parameters[parameter_sources.size()];
-        string p_type = fenv.env->signatures.at(function_to_call).parameter_types.at(p_name);
-        if (p_type != "undefined" and p_type != fenv.scope->typeof(tokens[i], i)) {
-            throw InvalidSyntax(i, ("invalid type for parameter " + p_name + " expected " + p_type + " but got " + fenv.scope->typeof(tokens[i], i)));
+        string p_name = scope->function->env->signatures.at(function_to_call).parameters[parameter_sources.size()];
+        string p_type = scope->function->env->signatures.at(function_to_call).parameter_types.at(p_name);
+        if (p_type != "undefined" and p_type != scope->typeof(tokens[i], i)) {
+            throw InvalidSyntax(i, ("invalid type for parameter " + p_name + " expected " + p_type + " but got " + scope->typeof(tokens[i], i)));
         }
 
-        parameter_sources.push_back(fenv.scope->registerof(tokens[i], i));
+        parameter_sources.push_back(scope->registerof(tokens[i], i));
         // account for both "," between parameters and
         // closing ")"
         ++i;
     }
 
-    if (fenv.env->signatures.at(function_to_call).parameters.size() != parameter_sources.size()) {
-        throw InvalidSyntax(i, ("missing parameters in call to function " + fenv.env->signatures.at(function_to_call).header()));
+    if (scope->function->env->signatures.at(function_to_call).parameters.size() != parameter_sources.size()) {
+        throw InvalidSyntax(i, ("missing parameters in call to function " + scope->function->env->signatures.at(function_to_call).header()));
     }
 
     output << "    frame ^[";
@@ -1072,16 +1095,16 @@ TokenVectorSize processFrame(const TokenVector& tokens, const string& function_t
     return (i-offset);
 }
 
-TokenVectorSize processCall(const TokenVector& tokens, TokenVectorSize offset, FunctionEnvironment& fenv, ostringstream& output) {
+TokenVectorSize processCall(const TokenVector& tokens, TokenVectorSize offset, Scope* scope, ostringstream& output) {
     string function_to_call = tokens[offset++];
     // skip opening "("
     ++offset;
-    TokenVectorSize i = processFrame(tokens, function_to_call, offset, fenv, output);
+    TokenVectorSize i = processFrame(tokens, function_to_call, offset, scope, output);
     output << "    call 0 " << function_to_call << endl;
 
     return i;
 }
-TokenVectorSize processCallWithReturnValueUsed(const TokenVector& tokens, TokenVectorSize offset, FunctionEnvironment& fenv, ostringstream& output) {
+TokenVectorSize processCallWithReturnValueUsed(const TokenVector& tokens, TokenVectorSize offset, Scope* scope, ostringstream& output) {
     string return_to = tokens[offset++];
 
     // skip "="
@@ -1092,82 +1115,87 @@ TokenVectorSize processCallWithReturnValueUsed(const TokenVector& tokens, TokenV
     // skip opening "("
     ++offset;
 
-    if (fenv.scope->typeof(return_to, offset-4) != fenv.env->functions.at(function_to_call)) {
+    if (scope->typeof(return_to, offset-4) != scope->function->env->functions.at(function_to_call)) {
         throw InvalidSyntax(offset, (
-                    "mismatched type of return target variable " + return_to + " of type " + fenv.scope->typeof(return_to, offset-4) + " and return type of function " + fenv.env->signatures.at(function_to_call).header()));
+                    "mismatched type of return target variable " + return_to + " of type " + scope->typeof(return_to, offset-4) + " and return type of function " + scope->function->env->signatures.at(function_to_call).header()));
     }
 
-    TokenVectorSize i = (processFrame(tokens, function_to_call, offset, fenv, output) + 4);
-    output << "    call " << fenv.scope->registerof(return_to, (offset-4)) << ' ' << function_to_call << endl;
+    TokenVectorSize i = (processFrame(tokens, function_to_call, offset, scope, output) + 4);
+    output << "    call " << scope->registerof(return_to, (offset-4)) << ' ' << function_to_call << endl;
 
     return i;
 }
 
 TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, Scope* scope, ostringstream& output);
 
-TokenVectorSize processIfStatement(const TokenVector& tokens, TokenVectorSize offset, FunctionEnvironment& fenv, ostringstream& output) {
+TokenVectorSize processIfStatement(const TokenVector& tokens, TokenVectorSize offset, Scope* scope, ostringstream& output) {
     TokenVectorSize i = offset;
 
     if (not support::str::isname(tokens[i])) {
         throw InvalidSyntax(i, ("unexpected token in condition experssion: " + tokens[i].text()));
     }
-    if (not fenv.scope->defined(tokens[i])) {
+    if (not scope->defined(tokens[i])) {
         throw InvalidSyntax(i, ("undeclared variable in condition experssion: " + tokens[i].text()));
     }
 
     string if_test_variable_name = tokens[i++];
-    string false_branch_name = ("__" + fenv.function_name + "_if_" + support::str::stringify(fenv.ifs++));
+    string false_branch_name = ("__" + scope->function->function_name + "_if_" + support::str::stringify(scope->function->ifs++));
 
     if (tokens[i] != "{") {
-        throw InvalidSyntax(i, ("missing opening '{' in if-statement in function " + fenv.header()));
+        throw InvalidSyntax(i, ("missing opening '{' in if-statement in function " + scope->function->header()));
     }
-    ++fenv.begin_balance;
+    scope->function->begin_balance += 1;
 
-    output << "    branch " << fenv.scope->registerof(if_test_variable_name, i) << ' ';
+    output << "    branch " << scope->registerof(if_test_variable_name, i) << ' ';
     output << "+1 " << false_branch_name << '\n';
 
-    i += processBlock(tokens, i, fenv.scope, output);
+    // FIXME: memory leaks on exceptions thrown
+    // this is not severe as when an exception is thrown the only course of action is to
+    // terminate the program since the comiler cannot recover from invalid source code
+    Scope *block_scope = new Scope(scope->function, scope);
+    i += processBlock(tokens, i, block_scope, output);
+    delete block_scope;
 
     output << "    .mark: " << false_branch_name << '\n';
 
     return (i - offset);
 }
 
-TokenVectorSize processWhileStatement(const TokenVector& tokens, TokenVectorSize offset, FunctionEnvironment& fenv, ostringstream& output) {
+TokenVectorSize processWhileStatement(const TokenVector& tokens, TokenVectorSize offset, Scope* scope, ostringstream& output) {
     TokenVectorSize i = offset;
 
     if (not support::str::isname(tokens[i])) {
         throw InvalidSyntax(i, ("unexpected token in condition experssion: " + tokens[i].text()));
     }
-    if (not fenv.scope->defined(tokens[i])) {
+    if (not scope->defined(tokens[i])) {
         throw InvalidSyntax(i, ("undeclared variable in condition experssion: " + tokens[i].text()));
     }
 
     string if_test_variable_name = tokens[i++];
-    string loop_name_begin = ("__" + fenv.function_name + "_begin_while_" + support::str::stringify(fenv.whiles++));
-    string loop_name_end = ("__" + fenv.function_name + "_end_while_" + support::str::stringify(fenv.whiles++));
+    string loop_name_begin = ("__" + scope->function->function_name + "_begin_while_" + support::str::stringify(scope->function->whiles++));
+    string loop_name_end = ("__" + scope->function->function_name + "_end_while_" + support::str::stringify(scope->function->whiles));
 
-    string prev_loop_begin = fenv.loop_begin;
-    string prev_loop_end = fenv.loop_end;
-    fenv.loop_begin = loop_name_begin;
-    fenv.loop_end = loop_name_end;
+    string prev_loop_begin = scope->function->loop_begin;
+    string prev_loop_end = scope->function->loop_end;
+    scope->function->loop_begin = loop_name_begin;
+    scope->function->loop_end = loop_name_end;
 
     if (tokens[i] != "{") {
-        throw InvalidSyntax(i, ("missing opening '{' in while-statement in function " + fenv.header()));
+        throw InvalidSyntax(i, ("missing opening '{' in while-statement in function " + scope->function->header()));
     }
-    ++fenv.begin_balance;
+    scope->function->begin_balance += 1;
 
     output << "    .mark: " << loop_name_begin << '\n';
-    output << "    branch " << fenv.scope->registerof(if_test_variable_name, i) << ' ';
+    output << "    branch " << scope->registerof(if_test_variable_name, i) << ' ';
     output << "+1 " << loop_name_end << '\n';
 
-    i += processBlock(tokens, i, fenv.scope, output);
+    i += processBlock(tokens, i, scope, output);
 
     output << "    jump " << loop_name_begin << '\n';
     output << "    .mark: " << loop_name_end << '\n';
 
-    fenv.loop_begin = prev_loop_begin;
-    fenv.loop_end = prev_loop_end;
+    scope->function->loop_begin = prev_loop_begin;
+    scope->function->loop_end = prev_loop_end;
 
     return (i - offset);
 }
@@ -1176,6 +1204,7 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
     TokenVectorSize number_of_processed_tokens = 0;
 
     FunctionEnvironment fenv(tokens[offset + (number_of_processed_tokens++)], &cenv);
+    Scope* scope = fenv.scope;
 
     if ((offset+number_of_processed_tokens+2) >= tokens.size() or tokens[offset+number_of_processed_tokens] !=  "(") {
         throw InvalidSyntax((offset+number_of_processed_tokens), ("missing parameter list in definition of function " + fenv.header()));
@@ -1258,11 +1287,11 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
     for (decltype(FunctionEnvironment::parameters)::size_type i = 0; i < fenv.parameters.size(); ++i) {
         output << "    .name: " << i+1 << ' ' << fenv.parameters[i] << endl;
         output << "    arg " << i+1 << ' ' << i << endl;
-        fenv.scope->setregisterof(fenv.parameters[i], i+1);
-        fenv.scope->settypeof(fenv.parameters[i], fenv.parameter_types[fenv.parameters[i]]);
+        scope->setregisterof(fenv.parameters[i], i+1);
+        scope->settypeof(fenv.parameters[i], fenv.parameter_types[fenv.parameters[i]]);
     }
 
-    number_of_processed_tokens += processBlock(tokens, (offset+number_of_processed_tokens), fenv.scope, output);
+    number_of_processed_tokens += processBlock(tokens, (offset+number_of_processed_tokens), scope, output);
 
     if (not fenv.has_returned) {
         output << "    end" << endl;
@@ -1337,9 +1366,9 @@ TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, 
             }
             output << "    jump " << scope->function->loop_end << '\n';
         } else if (tokens[offset+number_of_processed_tokens] == "if") {
-            number_of_processed_tokens += processIfStatement(tokens, (offset + (++number_of_processed_tokens)), *(scope->function), output);
+            number_of_processed_tokens += processIfStatement(tokens, (offset + (++number_of_processed_tokens)), scope, output);
         } else if (tokens[offset+number_of_processed_tokens] == "while") {
-            number_of_processed_tokens += processWhileStatement(tokens, (offset + (++number_of_processed_tokens)), *(scope->function), output);
+            number_of_processed_tokens += processWhileStatement(tokens, (offset + (++number_of_processed_tokens)), scope, output);
         } else {
             if ((offset+number_of_processed_tokens+3) >= tokens.size()) {
                 throw InvalidSyntax(
@@ -1347,9 +1376,9 @@ TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, 
                         ("missing tokens during call to " + tokens[offset+number_of_processed_tokens].text())
                       );
             } else if (tokens[offset+number_of_processed_tokens+1] == "(") {
-                number_of_processed_tokens += processCall(tokens, (offset + number_of_processed_tokens), *(scope->function), output);
+                number_of_processed_tokens += processCall(tokens, (offset + number_of_processed_tokens), scope, output);
             } else if (scope->defined(tokens[offset+number_of_processed_tokens]) and tokens[offset+number_of_processed_tokens+1] == "=" and tokens[offset+number_of_processed_tokens+3] == "(") {
-                number_of_processed_tokens += processCallWithReturnValueUsed(tokens, (offset+number_of_processed_tokens), *(scope->function), output);
+                number_of_processed_tokens += processCallWithReturnValueUsed(tokens, (offset+number_of_processed_tokens), scope, output);
             } else {
                 throw InvalidSyntax((offset+number_of_processed_tokens), "unexpected token");
             }
