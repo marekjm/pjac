@@ -753,11 +753,36 @@ struct CompilationEnvironment {
     map<string, FunctionSignature> signatures;
 };
 
-struct FunctionEnvironment {
+struct Scope {
     map<string, unsigned> variable_registers;
     map<string, string> variable_types;
     map<string, string> variable_values;
 
+    unsigned ifs;
+
+    unsigned whiles;
+    string loop_begin;
+    string loop_end;
+
+    Scope* parent;
+    FunctionEnvironment* function;
+
+    string typeof(const string& name, TokenVectorSize offset) {
+        if (variable_types.count(name)) {
+            return variable_types.at(name);
+        } else if (parent == nullptr) {
+            throw InvalidSyntax(offset, ("access to name not present in scope: " + name));
+        } else {
+            return parent->typeof(name, offset);
+        }
+    }
+
+    Scope(FunctionEnvironment *fn): parent(nullptr), function(fn) {}
+    Scope(Scope* scp): parent(scp), function(nullptr) {}
+    Scope(FunctionEnvironment *fn, Scope *scp): parent(scp), function(fn) {}
+};
+
+struct FunctionEnvironment {
     vector<string> parameters;
     map<string, string> parameter_types;
 
@@ -774,6 +799,7 @@ struct FunctionEnvironment {
     string loop_end;
 
     CompilationEnvironment *env;
+    Scope *scope;
 
     string header(bool full = false) const {
         ostringstream oss;
@@ -800,8 +826,13 @@ struct FunctionEnvironment {
         whiles(0),
         loop_begin(""),
         loop_end(""),
-        env(ce) {
+        env(ce),
+        scope(new Scope(this))
+    {
         }
+    ~FunctionEnvironment() {
+        delete scope;
+    }
 };
 
 
@@ -885,10 +916,10 @@ TokenVectorSize processVariable(const TokenVector& tokens, TokenVectorSize offse
     var_name = tokens[++i];
 
     // never store in register 0, if the value is not for return
-    var_register = fenv.variable_registers.size()+1;
+    var_register = fenv.scope->variable_registers.size()+1;
 
-    fenv.variable_registers[var_name] = var_register;
-    fenv.variable_types[var_name] = var_type;
+    fenv.scope->variable_registers[var_name] = var_register;
+    fenv.scope->variable_types[var_name] = var_type;
 
     ++i;
 
@@ -912,10 +943,10 @@ TokenVectorSize processVariable(const TokenVector& tokens, TokenVectorSize offse
         // skip terminating ";"
         ++i;
     }
-    fenv.variable_values[var_name] = var_value;
+    fenv.scope->variable_values[var_name] = var_value;
 
-    if (fenv.variable_registers.count(var_value)) {
-        output << "    copy " << var_register << ' ' << fenv.variable_registers[var_value] << endl;
+    if (fenv.scope->variable_registers.count(var_value)) {
+        output << "    copy " << var_register << ' ' << fenv.scope->variable_registers[var_value] << endl;
     } else {
         output << "    ";
         if (var_type == "int") {
@@ -959,7 +990,7 @@ TokenVectorSize processFrame(const TokenVector& tokens, const string& function_t
     }
 
     for (; i < tokens.size() and tokens[i] != ";"; ++i) {
-        if (fenv.variable_registers.count(tokens[i]) == 0) {
+        if (fenv.scope->variable_registers.count(tokens[i]) == 0) {
             throw InvalidSyntax(i, ("undefined name as parameter: `" + tokens[i].text() + "` in call to function `" + function_to_call + "`"));
         }
 
@@ -969,11 +1000,11 @@ TokenVectorSize processFrame(const TokenVector& tokens, const string& function_t
 
         string p_name = fenv.env->signatures.at(function_to_call).parameters[parameter_sources.size()];
         string p_type = fenv.env->signatures.at(function_to_call).parameter_types.at(p_name);
-        if (p_type != "undefined" and p_type != fenv.variable_types.at(tokens[i])) {
-            throw InvalidSyntax(i, ("invalid type for parameter " + p_name + " expected " + p_type + " but got " + fenv.variable_types.at(tokens[i])));
+        if (p_type != "undefined" and p_type != fenv.scope->variable_types.at(tokens[i])) {
+            throw InvalidSyntax(i, ("invalid type for parameter " + p_name + " expected " + p_type + " but got " + fenv.scope->variable_types.at(tokens[i])));
         }
 
-        parameter_sources.push_back(fenv.variable_registers.at(tokens[i]));
+        parameter_sources.push_back(fenv.scope->variable_registers.at(tokens[i]));
         // account for both "," between parameters and
         // closing ")"
         ++i;
@@ -1018,13 +1049,13 @@ TokenVectorSize processCallWithReturnValueUsed(const TokenVector& tokens, TokenV
     // skip opening "("
     ++offset;
 
-    if (fenv.variable_types.at(return_to) != fenv.env->functions.at(function_to_call)) {
+    if (fenv.scope->variable_types.at(return_to) != fenv.env->functions.at(function_to_call)) {
         throw InvalidSyntax(offset, (
-                    "mismatched type of return target variable " + return_to + " of type " + fenv.variable_types.at(return_to) + " and return type of function " + fenv.env->signatures.at(function_to_call).header()));
+                    "mismatched type of return target variable " + return_to + " of type " + fenv.scope->variable_types.at(return_to) + " and return type of function " + fenv.env->signatures.at(function_to_call).header()));
     }
 
     TokenVectorSize i = (processFrame(tokens, function_to_call, offset, fenv, output) + 4);
-    output << "    call " << fenv.variable_registers.at(return_to) << ' ' << function_to_call << endl;
+    output << "    call " << fenv.scope->variable_registers.at(return_to) << ' ' << function_to_call << endl;
 
     return i;
 }
@@ -1037,7 +1068,7 @@ TokenVectorSize processIfStatement(const TokenVector& tokens, TokenVectorSize of
     if (not support::str::isname(tokens[i])) {
         throw InvalidSyntax(i, ("unexpected token in condition experssion: " + tokens[i].text()));
     }
-    if (fenv.variable_registers.count(tokens[i]) == 0) {
+    if (fenv.scope->variable_registers.count(tokens[i]) == 0) {
         throw InvalidSyntax(i, ("undeclared variable in condition experssion: " + tokens[i].text()));
     }
 
@@ -1049,7 +1080,7 @@ TokenVectorSize processIfStatement(const TokenVector& tokens, TokenVectorSize of
     }
     ++fenv.begin_balance;
 
-    output << "    branch " << fenv.variable_registers[if_test_variable_name] << ' ';
+    output << "    branch " << fenv.scope->variable_registers[if_test_variable_name] << ' ';
     output << "+1 " << false_branch_name << '\n';
 
     i += processBlock(tokens, i, fenv, output);
@@ -1065,7 +1096,7 @@ TokenVectorSize processWhileStatement(const TokenVector& tokens, TokenVectorSize
     if (not support::str::isname(tokens[i])) {
         throw InvalidSyntax(i, ("unexpected token in condition experssion: " + tokens[i].text()));
     }
-    if (fenv.variable_registers.count(tokens[i]) == 0) {
+    if (fenv.scope->variable_registers.count(tokens[i]) == 0) {
         throw InvalidSyntax(i, ("undeclared variable in condition experssion: " + tokens[i].text()));
     }
 
@@ -1084,7 +1115,7 @@ TokenVectorSize processWhileStatement(const TokenVector& tokens, TokenVectorSize
     ++fenv.begin_balance;
 
     output << "    .mark: " << loop_name_begin << '\n';
-    output << "    branch " << fenv.variable_registers[if_test_variable_name] << ' ';
+    output << "    branch " << fenv.scope->variable_registers[if_test_variable_name] << ' ';
     output << "+1 " << loop_name_end << '\n';
 
     i += processBlock(tokens, i, fenv, output);
@@ -1184,8 +1215,8 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
     for (decltype(FunctionEnvironment::parameters)::size_type i = 0; i < fenv.parameters.size(); ++i) {
         output << "    .name: " << i+1 << ' ' << fenv.parameters[i] << endl;
         output << "    arg " << i+1 << ' ' << i << endl;
-        fenv.variable_registers[fenv.parameters[i]] = i+1;
-        fenv.variable_types[fenv.parameters[i]] = fenv.parameter_types[fenv.parameters[i]];
+        fenv.scope->variable_registers[fenv.parameters[i]] = i+1;
+        fenv.scope->variable_types[fenv.parameters[i]] = fenv.parameter_types[fenv.parameters[i]];
     }
 
     number_of_processed_tokens += processBlock(tokens, (offset+number_of_processed_tokens), fenv, output);
@@ -1225,11 +1256,11 @@ TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, 
                     } else {
                         output << "    istore 0 " << tokens[offset+number_of_processed_tokens].text() << endl;
                     }
-                } else if (fenv.variable_registers[tokens[offset+number_of_processed_tokens]] != 0) {
-                    if (fenv.return_type != fenv.variable_types.at(tokens[offset+number_of_processed_tokens])) {
-                        throw InvalidSyntax((offset+number_of_processed_tokens), ("mismatched return type in function " + fenv.header() + ", expected " + fenv.return_type + " but got " + fenv.variable_types.at(tokens[offset+number_of_processed_tokens])));
+                } else if (fenv.scope->variable_registers[tokens[offset+number_of_processed_tokens]] != 0) {
+                    if (fenv.return_type != fenv.scope->variable_types.at(tokens[offset+number_of_processed_tokens])) {
+                        throw InvalidSyntax((offset+number_of_processed_tokens), ("mismatched return type in function " + fenv.header() + ", expected " + fenv.return_type + " but got " + fenv.scope->variable_types.at(tokens[offset+number_of_processed_tokens])));
                     }
-                    output << "    move 0 " << fenv.variable_registers[tokens[offset+number_of_processed_tokens]] << endl;
+                    output << "    move 0 " << fenv.scope->variable_registers[tokens[offset+number_of_processed_tokens]] << endl;
                 }
 
                 // advance after the returned <token>
@@ -1274,7 +1305,7 @@ TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, 
                       );
             } else if (tokens[offset+number_of_processed_tokens+1] == "(") {
                 number_of_processed_tokens += processCall(tokens, (offset + number_of_processed_tokens), fenv, output);
-            } else if (fenv.variable_registers.count(tokens[offset+number_of_processed_tokens]) and tokens[offset+number_of_processed_tokens+1] == "=" and tokens[offset+number_of_processed_tokens+3] == "(") {
+            } else if (fenv.scope->variable_registers.count(tokens[offset+number_of_processed_tokens]) and tokens[offset+number_of_processed_tokens+1] == "=" and tokens[offset+number_of_processed_tokens+3] == "(") {
                 number_of_processed_tokens += processCallWithReturnValueUsed(tokens, (offset+number_of_processed_tokens), fenv, output);
             } else {
                 throw InvalidSyntax((offset+number_of_processed_tokens), "unexpected token");
