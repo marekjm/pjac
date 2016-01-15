@@ -767,6 +767,16 @@ struct Scope {
     Scope* parent;
     FunctionEnvironment* function;
 
+    unsigned registerof(const string& name, TokenVectorSize offset) {
+        if (variable_registers.count(name)) {
+            return variable_registers.at(name);
+        } else if (parent == nullptr) {
+            throw InvalidSyntax(offset, ("access to name not present in scope: " + name));
+        } else {
+            return parent->registerof(name, offset);
+        }
+    }
+
     string typeof(const string& name, TokenVectorSize offset) {
         if (variable_types.count(name)) {
             return variable_types.at(name);
