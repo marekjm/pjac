@@ -767,6 +767,16 @@ struct Scope {
     Scope* parent;
     FunctionEnvironment* function;
 
+    bool defined(const string& name) {
+        if (variable_registers.count(name)) {
+            return true;
+        } else if (parent == nullptr) {
+            return false;
+        } else {
+            return parent->defined(name);
+        }
+    }
+
     unsigned registerof(const string& name, TokenVectorSize offset) {
         if (variable_registers.count(name)) {
             return variable_registers.at(name);
@@ -955,8 +965,8 @@ TokenVectorSize processVariable(const TokenVector& tokens, TokenVectorSize offse
     }
     fenv.scope->variable_values[var_name] = var_value;
 
-    if (fenv.scope->variable_registers.count(var_value)) {
-        output << "    copy " << var_register << ' ' << fenv.scope->variable_registers[var_value] << endl;
+    if (fenv.scope->defined(var_value)) {
+        output << "    copy " << var_register << ' ' << fenv.scope->registerof(var_value, i) << endl;
     } else {
         output << "    ";
         if (var_type == "int") {
@@ -1000,7 +1010,7 @@ TokenVectorSize processFrame(const TokenVector& tokens, const string& function_t
     }
 
     for (; i < tokens.size() and tokens[i] != ";"; ++i) {
-        if (fenv.scope->variable_registers.count(tokens[i]) == 0) {
+        if (not fenv.scope->defined(tokens[i])) {
             throw InvalidSyntax(i, ("undefined name as parameter: `" + tokens[i].text() + "` in call to function `" + function_to_call + "`"));
         }
 
@@ -1014,7 +1024,7 @@ TokenVectorSize processFrame(const TokenVector& tokens, const string& function_t
             throw InvalidSyntax(i, ("invalid type for parameter " + p_name + " expected " + p_type + " but got " + fenv.scope->variable_types.at(tokens[i])));
         }
 
-        parameter_sources.push_back(fenv.scope->variable_registers.at(tokens[i]));
+        parameter_sources.push_back(fenv.scope->registerof(tokens[i], i));
         // account for both "," between parameters and
         // closing ")"
         ++i;
@@ -1065,7 +1075,7 @@ TokenVectorSize processCallWithReturnValueUsed(const TokenVector& tokens, TokenV
     }
 
     TokenVectorSize i = (processFrame(tokens, function_to_call, offset, fenv, output) + 4);
-    output << "    call " << fenv.scope->variable_registers.at(return_to) << ' ' << function_to_call << endl;
+    output << "    call " << fenv.scope->registerof(return_to, (offset-4)) << ' ' << function_to_call << endl;
 
     return i;
 }
@@ -1078,7 +1088,7 @@ TokenVectorSize processIfStatement(const TokenVector& tokens, TokenVectorSize of
     if (not support::str::isname(tokens[i])) {
         throw InvalidSyntax(i, ("unexpected token in condition experssion: " + tokens[i].text()));
     }
-    if (fenv.scope->variable_registers.count(tokens[i]) == 0) {
+    if (not fenv.scope->defined(tokens[i])) {
         throw InvalidSyntax(i, ("undeclared variable in condition experssion: " + tokens[i].text()));
     }
 
@@ -1090,7 +1100,7 @@ TokenVectorSize processIfStatement(const TokenVector& tokens, TokenVectorSize of
     }
     ++fenv.begin_balance;
 
-    output << "    branch " << fenv.scope->variable_registers[if_test_variable_name] << ' ';
+    output << "    branch " << fenv.scope->registerof(if_test_variable_name, i) << ' ';
     output << "+1 " << false_branch_name << '\n';
 
     i += processBlock(tokens, i, fenv.scope, output);
@@ -1106,7 +1116,7 @@ TokenVectorSize processWhileStatement(const TokenVector& tokens, TokenVectorSize
     if (not support::str::isname(tokens[i])) {
         throw InvalidSyntax(i, ("unexpected token in condition experssion: " + tokens[i].text()));
     }
-    if (fenv.scope->variable_registers.count(tokens[i]) == 0) {
+    if (not fenv.scope->defined(tokens[i])) {
         throw InvalidSyntax(i, ("undeclared variable in condition experssion: " + tokens[i].text()));
     }
 
@@ -1125,7 +1135,7 @@ TokenVectorSize processWhileStatement(const TokenVector& tokens, TokenVectorSize
     ++fenv.begin_balance;
 
     output << "    .mark: " << loop_name_begin << '\n';
-    output << "    branch " << fenv.scope->variable_registers[if_test_variable_name] << ' ';
+    output << "    branch " << fenv.scope->registerof(if_test_variable_name, i) << ' ';
     output << "+1 " << loop_name_end << '\n';
 
     i += processBlock(tokens, i, fenv.scope, output);
