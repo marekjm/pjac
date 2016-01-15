@@ -1369,6 +1369,7 @@ TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, 
             if (scope->function->loop_end == "") {
                 throw InvalidSyntax((offset+number_of_processed_tokens), ("break outside of loop inside function " + scope->function->header()));
             }
+            output << "    ; from break instruction" << endl;
             output << "    jump " << scope->function->loop_end << '\n';
         } else if (tokens[offset+number_of_processed_tokens] == "if") {
             number_of_processed_tokens += processIfStatement(tokens, (offset + (++number_of_processed_tokens)), scope, output);
