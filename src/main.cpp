@@ -815,6 +815,11 @@ struct Scope {
         return type;
     }
 
+    string setvalueof(const string& name, const string& type) {
+        variable_values[name] = type;
+        return type;
+    }
+
     Scope(FunctionEnvironment *fn): parent(nullptr), function(fn) {}
     Scope(Scope* scp): parent(scp), function(nullptr) {}
     Scope(FunctionEnvironment *fn, Scope *scp): parent(scp), function(fn) {}
@@ -981,7 +986,7 @@ TokenVectorSize processVariable(const TokenVector& tokens, TokenVectorSize offse
         // skip terminating ";"
         ++i;
     }
-    fenv.scope->variable_values[var_name] = var_value;
+    fenv.scope->setvalueof(var_name, var_value);
 
     if (fenv.scope->defined(var_value)) {
         output << "    copy " << var_register << ' ' << fenv.scope->registerof(var_value, i) << endl;
