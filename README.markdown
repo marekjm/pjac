@@ -15,8 +15,7 @@ Here's "Hello World!" in PJAC-compilable code.
 
 ```
 // inline assembly to access the "print" and "arg" instructions
-function print(undefined msg) -> void { asm print (arg 1 0); }
-
+function print(undefined msg) -> void { asm print msg; }
 function main() -> int {
     var string s = "Hello World!";
     print(s);
@@ -34,3 +33,6 @@ written directly in Viua assembly:
     end
 .end
 ```
+
+However, the longer the program is, the more lines are saved when it is written
+in PJAC-compilable language rather than in Viua assembly.
