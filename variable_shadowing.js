@@ -12,6 +12,8 @@ function main() -> int {
         {
             var bool f;
         }
+        // uncomment this to make compilation fail
+        //print(f);
 
         if msg {
             // should print "Oh noes! A bug!"
