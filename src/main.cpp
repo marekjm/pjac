@@ -950,7 +950,7 @@ vector<string> mapStringVector(const vector<string>& sv, string(*fn)(const strin
 }
 
 
-TokenVectorSize processVariable(const TokenVector& tokens, TokenVectorSize offset, FunctionEnvironment& fenv, ostringstream& output) {
+TokenVectorSize processVariable(const TokenVector& tokens, TokenVectorSize offset, Scope* scope, ostringstream& output) {
     TokenVectorSize i = offset;
     string var_name = "", var_type = "", var_value = "";
     unsigned var_register = 0;
@@ -959,10 +959,10 @@ TokenVectorSize processVariable(const TokenVector& tokens, TokenVectorSize offse
     var_name = tokens[++i];
 
     // never store in register 0, if the value is not for return
-    var_register = fenv.scope->size()+1;
+    var_register = scope->size()+1;
 
-    fenv.scope->setregisterof(var_name, var_register);
-    fenv.scope->settypeof(var_name, var_type);
+    scope->setregisterof(var_name, var_register);
+    scope->settypeof(var_name, var_type);
 
     ++i;
 
@@ -979,17 +979,17 @@ TokenVectorSize processVariable(const TokenVector& tokens, TokenVectorSize offse
             var_value = "false";
         } else {
             throw InvalidSyntax(i, ("invalid type of variable " + var_name + " in definition of function " +
-                        fenv.header() + ": " + var_type));
+                        scope->function->header() + ": " + var_type));
         }
     } else if (tokens[i] == "=") {
         var_value = tokens[++i];
         // skip terminating ";"
         ++i;
     }
-    fenv.scope->setvalueof(var_name, var_value);
+    scope->setvalueof(var_name, var_value);
 
-    if (fenv.scope->defined(var_value)) {
-        output << "    copy " << var_register << ' ' << fenv.scope->registerof(var_value, i) << endl;
+    if (scope->defined(var_value)) {
+        output << "    copy " << var_register << ' ' << scope->registerof(var_value, i) << endl;
     } else {
         output << "    ";
         if (var_type == "int") {
@@ -1006,7 +1006,7 @@ TokenVectorSize processVariable(const TokenVector& tokens, TokenVectorSize offse
                 output << "not (istore " << var_register << " 0)" << endl;
             } else {
                 throw InvalidSyntax(offset, ("invalid boolean literal in initialisation of variable " +
-                            var_name + " in function " + fenv.header() + ": " + var_value));
+                            var_name + " in function " + scope->function->header() + ": " + var_value));
             }
         } else {
             output << ' ' << var_register << ' ' << var_value << endl;
@@ -1280,7 +1280,7 @@ TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, 
 
     for (; number_of_processed_tokens+offset < tokens.size() and scope->function->begin_balance; ++number_of_processed_tokens) {
         if (tokens[offset+number_of_processed_tokens] == "var") {
-            number_of_processed_tokens += processVariable(tokens, (offset + (++number_of_processed_tokens)), *(scope->function), output);
+            number_of_processed_tokens += processVariable(tokens, (offset + (++number_of_processed_tokens)), scope, output);
         } else if (tokens[offset+number_of_processed_tokens] == "return") {
             scope->function->has_returned = true;
 
