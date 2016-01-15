@@ -1060,7 +1060,7 @@ TokenVectorSize processCallWithReturnValueUsed(const TokenVector& tokens, TokenV
     return i;
 }
 
-TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, FunctionEnvironment& fenv, ostringstream& output);
+TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, Scope* scope, ostringstream& output);
 
 TokenVectorSize processIfStatement(const TokenVector& tokens, TokenVectorSize offset, FunctionEnvironment& fenv, ostringstream& output) {
     TokenVectorSize i = offset;
@@ -1083,7 +1083,7 @@ TokenVectorSize processIfStatement(const TokenVector& tokens, TokenVectorSize of
     output << "    branch " << fenv.scope->variable_registers[if_test_variable_name] << ' ';
     output << "+1 " << false_branch_name << '\n';
 
-    i += processBlock(tokens, i, fenv, output);
+    i += processBlock(tokens, i, fenv.scope, output);
 
     output << "    .mark: " << false_branch_name << '\n';
 
@@ -1118,7 +1118,7 @@ TokenVectorSize processWhileStatement(const TokenVector& tokens, TokenVectorSize
     output << "    branch " << fenv.scope->variable_registers[if_test_variable_name] << ' ';
     output << "+1 " << loop_name_end << '\n';
 
-    i += processBlock(tokens, i, fenv, output);
+    i += processBlock(tokens, i, fenv.scope, output);
 
     output << "    jump " << loop_name_begin << '\n';
     output << "    .mark: " << loop_name_end << '\n';
@@ -1219,7 +1219,7 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
         fenv.scope->variable_types[fenv.parameters[i]] = fenv.parameter_types[fenv.parameters[i]];
     }
 
-    number_of_processed_tokens += processBlock(tokens, (offset+number_of_processed_tokens), fenv, output);
+    number_of_processed_tokens += processBlock(tokens, (offset+number_of_processed_tokens), fenv.scope, output);
 
     if (not fenv.has_returned) {
         output << "    end" << endl;
@@ -1232,14 +1232,14 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
     return number_of_processed_tokens;
 }
 
-TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, FunctionEnvironment& fenv, ostringstream& output) {
+TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, Scope* scope, ostringstream& output) {
     TokenVectorSize number_of_processed_tokens = 0;
 
-    for (; number_of_processed_tokens+offset < tokens.size() and fenv.begin_balance; ++number_of_processed_tokens) {
+    for (; number_of_processed_tokens+offset < tokens.size() and scope->function->begin_balance; ++number_of_processed_tokens) {
         if (tokens[offset+number_of_processed_tokens] == "var") {
-            number_of_processed_tokens += processVariable(tokens, (offset + (++number_of_processed_tokens)), fenv, output);
+            number_of_processed_tokens += processVariable(tokens, (offset + (++number_of_processed_tokens)), *(scope->function), output);
         } else if (tokens[offset+number_of_processed_tokens] == "return") {
-            fenv.has_returned = true;
+            scope->function->has_returned = true;
 
             // skip "return" keyword
             ++number_of_processed_tokens;
@@ -1248,26 +1248,26 @@ TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, 
             if (tokens[offset + number_of_processed_tokens] != ";") {
                 // this if deals with `return <number> ;` case
                 if (support::str::isnum(tokens[offset+number_of_processed_tokens])) {
-                    if (fenv.return_type != "int") {
-                        throw InvalidSyntax((offset+number_of_processed_tokens), ("mismatched return type in function " + fenv.header() + ", expected " + fenv.return_type + " but got int"));
+                    if (scope->function->return_type != "int") {
+                        throw InvalidSyntax((offset+number_of_processed_tokens), ("mismatched return type in function " + scope->function->header() + ", expected " + scope->function->return_type + " but got int"));
                     }
                     if (tokens[offset+number_of_processed_tokens] == "0") {
                         output << "    izero 0" << endl;
                     } else {
                         output << "    istore 0 " << tokens[offset+number_of_processed_tokens].text() << endl;
                     }
-                } else if (fenv.scope->variable_registers[tokens[offset+number_of_processed_tokens]] != 0) {
-                    if (fenv.return_type != fenv.scope->variable_types.at(tokens[offset+number_of_processed_tokens])) {
-                        throw InvalidSyntax((offset+number_of_processed_tokens), ("mismatched return type in function " + fenv.header() + ", expected " + fenv.return_type + " but got " + fenv.scope->variable_types.at(tokens[offset+number_of_processed_tokens])));
+                } else if (scope->variable_registers[tokens[offset+number_of_processed_tokens]] != 0) {
+                    if (scope->function->return_type != scope->variable_types.at(tokens[offset+number_of_processed_tokens])) {
+                        throw InvalidSyntax((offset+number_of_processed_tokens), ("mismatched return type in function " + scope->function->header() + ", expected " + scope->function->return_type + " but got " + scope->variable_types.at(tokens[offset+number_of_processed_tokens])));
                     }
-                    output << "    move 0 " << fenv.scope->variable_registers[tokens[offset+number_of_processed_tokens]] << endl;
+                    output << "    move 0 " << scope->variable_registers[tokens[offset+number_of_processed_tokens]] << endl;
                 }
 
                 // advance after the returned <token>
                 ++number_of_processed_tokens;
             } else {
-                if (fenv.return_type != "void") {
-                    throw InvalidSyntax((offset+number_of_processed_tokens), ("mismatched return type in function " + fenv.header() + ", expected " + fenv.return_type + " but got void"));
+                if (scope->function->return_type != "void") {
+                    throw InvalidSyntax((offset+number_of_processed_tokens), ("mismatched return type in function " + scope->function->header() + ", expected " + scope->function->return_type + " but got void"));
                 }
             }
 
@@ -1284,19 +1284,19 @@ TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, 
         } else if (tokens[offset+number_of_processed_tokens] == ";") {
             continue;
         } else if (tokens[offset+number_of_processed_tokens] == "{") {
-            ++fenv.begin_balance;
+            scope->function->begin_balance += 1;
         } else if (tokens[offset+number_of_processed_tokens] == "}") {
-            --fenv.begin_balance;
+            scope->function->begin_balance -= 1;
             break;
         } else if (tokens[offset+number_of_processed_tokens] == "break") {
-            if (fenv.loop_end == "") {
-                throw InvalidSyntax((offset+number_of_processed_tokens), ("break outside of loop inside function " + fenv.header()));
+            if (scope->function->loop_end == "") {
+                throw InvalidSyntax((offset+number_of_processed_tokens), ("break outside of loop inside function " + scope->function->header()));
             }
-            output << "    jump " << fenv.loop_end << '\n';
+            output << "    jump " << scope->function->loop_end << '\n';
         } else if (tokens[offset+number_of_processed_tokens] == "if") {
-            number_of_processed_tokens += processIfStatement(tokens, (offset + (++number_of_processed_tokens)), fenv, output);
+            number_of_processed_tokens += processIfStatement(tokens, (offset + (++number_of_processed_tokens)), *(scope->function), output);
         } else if (tokens[offset+number_of_processed_tokens] == "while") {
-            number_of_processed_tokens += processWhileStatement(tokens, (offset + (++number_of_processed_tokens)), fenv, output);
+            number_of_processed_tokens += processWhileStatement(tokens, (offset + (++number_of_processed_tokens)), *(scope->function), output);
         } else {
             if ((offset+number_of_processed_tokens+3) >= tokens.size()) {
                 throw InvalidSyntax(
@@ -1304,9 +1304,9 @@ TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, 
                         ("missing tokens during call to " + tokens[offset+number_of_processed_tokens].text())
                       );
             } else if (tokens[offset+number_of_processed_tokens+1] == "(") {
-                number_of_processed_tokens += processCall(tokens, (offset + number_of_processed_tokens), fenv, output);
-            } else if (fenv.scope->variable_registers.count(tokens[offset+number_of_processed_tokens]) and tokens[offset+number_of_processed_tokens+1] == "=" and tokens[offset+number_of_processed_tokens+3] == "(") {
-                number_of_processed_tokens += processCallWithReturnValueUsed(tokens, (offset+number_of_processed_tokens), fenv, output);
+                number_of_processed_tokens += processCall(tokens, (offset + number_of_processed_tokens), *(scope->function), output);
+            } else if (scope->variable_registers.count(tokens[offset+number_of_processed_tokens]) and tokens[offset+number_of_processed_tokens+1] == "=" and tokens[offset+number_of_processed_tokens+3] == "(") {
+                number_of_processed_tokens += processCallWithReturnValueUsed(tokens, (offset+number_of_processed_tokens), *(scope->function), output);
             } else {
                 throw InvalidSyntax((offset+number_of_processed_tokens), "unexpected token");
             }
