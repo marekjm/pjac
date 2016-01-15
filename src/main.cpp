@@ -1132,10 +1132,10 @@ TokenVectorSize processIfStatement(const TokenVector& tokens, TokenVectorSize of
     TokenVectorSize i = offset;
 
     if (not support::str::isname(tokens[i])) {
-        throw InvalidSyntax(i, ("unexpected token in condition experssion: " + tokens[i].text()));
+        throw InvalidSyntax(i, ("unexpected token in condition experssion: " + support::str::strencode(tokens[i].text())));
     }
     if (not scope->defined(tokens[i])) {
-        throw InvalidSyntax(i, ("undeclared variable in condition experssion: " + tokens[i].text()));
+        throw InvalidSyntax(i, ("undeclared variable in condition experssion: " + support::str::strencode(tokens[i].text())));
     }
 
     string if_test_variable_name = tokens[i++];
