@@ -810,6 +810,11 @@ struct Scope {
         }
     }
 
+    string settypeof(const string& name, const string& type) {
+        variable_types[name] = type;
+        return type;
+    }
+
     Scope(FunctionEnvironment *fn): parent(nullptr), function(fn) {}
     Scope(Scope* scp): parent(scp), function(nullptr) {}
     Scope(FunctionEnvironment *fn, Scope *scp): parent(scp), function(fn) {}
@@ -952,7 +957,7 @@ TokenVectorSize processVariable(const TokenVector& tokens, TokenVectorSize offse
     var_register = fenv.scope->size()+1;
 
     fenv.scope->setregisterof(var_name, var_register);
-    fenv.scope->variable_types[var_name] = var_type;
+    fenv.scope->settypeof(var_name, var_type);
 
     ++i;
 
@@ -1033,8 +1038,8 @@ TokenVectorSize processFrame(const TokenVector& tokens, const string& function_t
 
         string p_name = fenv.env->signatures.at(function_to_call).parameters[parameter_sources.size()];
         string p_type = fenv.env->signatures.at(function_to_call).parameter_types.at(p_name);
-        if (p_type != "undefined" and p_type != fenv.scope->variable_types.at(tokens[i])) {
-            throw InvalidSyntax(i, ("invalid type for parameter " + p_name + " expected " + p_type + " but got " + fenv.scope->variable_types.at(tokens[i])));
+        if (p_type != "undefined" and p_type != fenv.scope->typeof(tokens[i], i)) {
+            throw InvalidSyntax(i, ("invalid type for parameter " + p_name + " expected " + p_type + " but got " + fenv.scope->typeof(tokens[i], i)));
         }
 
         parameter_sources.push_back(fenv.scope->registerof(tokens[i], i));
@@ -1082,9 +1087,9 @@ TokenVectorSize processCallWithReturnValueUsed(const TokenVector& tokens, TokenV
     // skip opening "("
     ++offset;
 
-    if (fenv.scope->variable_types.at(return_to) != fenv.env->functions.at(function_to_call)) {
+    if (fenv.scope->typeof(return_to, offset-4) != fenv.env->functions.at(function_to_call)) {
         throw InvalidSyntax(offset, (
-                    "mismatched type of return target variable " + return_to + " of type " + fenv.scope->variable_types.at(return_to) + " and return type of function " + fenv.env->signatures.at(function_to_call).header()));
+                    "mismatched type of return target variable " + return_to + " of type " + fenv.scope->typeof(return_to, offset-4) + " and return type of function " + fenv.env->signatures.at(function_to_call).header()));
     }
 
     TokenVectorSize i = (processFrame(tokens, function_to_call, offset, fenv, output) + 4);
@@ -1249,7 +1254,7 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
         output << "    .name: " << i+1 << ' ' << fenv.parameters[i] << endl;
         output << "    arg " << i+1 << ' ' << i << endl;
         fenv.scope->setregisterof(fenv.parameters[i], i+1);
-        fenv.scope->variable_types[fenv.parameters[i]] = fenv.parameter_types[fenv.parameters[i]];
+        fenv.scope->settypeof(fenv.parameters[i], fenv.parameter_types[fenv.parameters[i]]);
     }
 
     number_of_processed_tokens += processBlock(tokens, (offset+number_of_processed_tokens), fenv.scope, output);
@@ -1291,7 +1296,7 @@ TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, 
                     }
                 } else if (scope->registerof(tokens[offset+number_of_processed_tokens], offset+number_of_processed_tokens) != 0) {
                     if (scope->function->return_type != scope->typeof(tokens[offset+number_of_processed_tokens], offset+number_of_processed_tokens)) {
-                        throw InvalidSyntax((offset+number_of_processed_tokens), ("mismatched return type in function " + scope->function->header() + ", expected " + scope->function->return_type + " but got " + scope->variable_types.at(tokens[offset+number_of_processed_tokens])));
+                        throw InvalidSyntax((offset+number_of_processed_tokens), ("mismatched return type in function " + scope->function->header() + ", expected " + scope->function->return_type + " but got " + scope->typeof(tokens[offset+number_of_processed_tokens], offset+number_of_processed_tokens)));
                     }
                     output << "    move 0 " << scope->registerof(tokens[offset+number_of_processed_tokens], offset+number_of_processed_tokens) << endl;
                 }
