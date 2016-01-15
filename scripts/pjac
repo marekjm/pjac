@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+
+set -e
+
+./build/bin/pjac $1
+viua-asm $1.asm
