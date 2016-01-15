@@ -1149,6 +1149,9 @@ TokenVectorSize processIfStatement(const TokenVector& tokens, TokenVectorSize of
     output << "    branch " << scope->registerof(if_test_variable_name, i) << ' ';
     output << "+1 " << false_branch_name << '\n';
 
+    // skip opening "{"
+    ++i;
+
     // FIXME: memory leaks on exceptions thrown
     // this is not severe as when an exception is thrown the only course of action is to
     // terminate the program since the comiler cannot recover from invalid source code
@@ -1188,6 +1191,9 @@ TokenVectorSize processWhileStatement(const TokenVector& tokens, TokenVectorSize
     output << "    .mark: " << loop_name_begin << '\n';
     output << "    branch " << scope->registerof(if_test_variable_name, i) << ' ';
     output << "+1 " << loop_name_end << '\n';
+
+    // skip opening "{"
+    ++i;
 
     // FIXME: memory leaks on exceptions thrown
     // this is not severe as when an exception is thrown the only course of action is to
@@ -1361,7 +1367,7 @@ TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, 
         } else if (tokens[offset+number_of_processed_tokens] == ";") {
             continue;
         } else if (tokens[offset+number_of_processed_tokens] == "{") {
-            scope->function->begin_balance += 1;
+            number_of_processed_tokens += processBlock(tokens, (offset + (++number_of_processed_tokens)), scope, output);
         } else if (tokens[offset+number_of_processed_tokens] == "}") {
             scope->function->begin_balance -= 1;
             break;
