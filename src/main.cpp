@@ -767,6 +767,14 @@ struct Scope {
     Scope* parent;
     FunctionEnvironment* function;
 
+    unsigned size() const {
+        unsigned sz = variable_registers.size();
+        if (parent) {
+            sz += parent->size();
+        }
+        return sz;
+    }
+
     bool defined(const string& name) {
         if (variable_registers.count(name)) {
             return true;
@@ -785,6 +793,11 @@ struct Scope {
         } else {
             return parent->registerof(name, offset);
         }
+    }
+
+    unsigned setregisterof(const string& name, unsigned n) {
+        variable_registers[name] = n;
+        return n;
     }
 
     string typeof(const string& name, TokenVectorSize offset) {
@@ -936,9 +949,9 @@ TokenVectorSize processVariable(const TokenVector& tokens, TokenVectorSize offse
     var_name = tokens[++i];
 
     // never store in register 0, if the value is not for return
-    var_register = fenv.scope->variable_registers.size()+1;
+    var_register = fenv.scope->size()+1;
 
-    fenv.scope->variable_registers[var_name] = var_register;
+    fenv.scope->setregisterof(var_name, var_register);
     fenv.scope->variable_types[var_name] = var_type;
 
     ++i;
@@ -1235,7 +1248,7 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
     for (decltype(FunctionEnvironment::parameters)::size_type i = 0; i < fenv.parameters.size(); ++i) {
         output << "    .name: " << i+1 << ' ' << fenv.parameters[i] << endl;
         output << "    arg " << i+1 << ' ' << i << endl;
-        fenv.scope->variable_registers[fenv.parameters[i]] = i+1;
+        fenv.scope->setregisterof(fenv.parameters[i], i+1);
         fenv.scope->variable_types[fenv.parameters[i]] = fenv.parameter_types[fenv.parameters[i]];
     }
 
@@ -1276,11 +1289,11 @@ TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, 
                     } else {
                         output << "    istore 0 " << tokens[offset+number_of_processed_tokens].text() << endl;
                     }
-                } else if (scope->variable_registers[tokens[offset+number_of_processed_tokens]] != 0) {
-                    if (scope->function->return_type != scope->variable_types.at(tokens[offset+number_of_processed_tokens])) {
+                } else if (scope->registerof(tokens[offset+number_of_processed_tokens], offset+number_of_processed_tokens) != 0) {
+                    if (scope->function->return_type != scope->typeof(tokens[offset+number_of_processed_tokens], offset+number_of_processed_tokens)) {
                         throw InvalidSyntax((offset+number_of_processed_tokens), ("mismatched return type in function " + scope->function->header() + ", expected " + scope->function->return_type + " but got " + scope->variable_types.at(tokens[offset+number_of_processed_tokens])));
                     }
-                    output << "    move 0 " << scope->variable_registers[tokens[offset+number_of_processed_tokens]] << endl;
+                    output << "    move 0 " << scope->registerof(tokens[offset+number_of_processed_tokens], offset+number_of_processed_tokens) << endl;
                 }
 
                 // advance after the returned <token>
@@ -1325,7 +1338,7 @@ TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, 
                       );
             } else if (tokens[offset+number_of_processed_tokens+1] == "(") {
                 number_of_processed_tokens += processCall(tokens, (offset + number_of_processed_tokens), *(scope->function), output);
-            } else if (scope->variable_registers.count(tokens[offset+number_of_processed_tokens]) and tokens[offset+number_of_processed_tokens+1] == "=" and tokens[offset+number_of_processed_tokens+3] == "(") {
+            } else if (scope->defined(tokens[offset+number_of_processed_tokens]) and tokens[offset+number_of_processed_tokens+1] == "=" and tokens[offset+number_of_processed_tokens+3] == "(") {
                 number_of_processed_tokens += processCallWithReturnValueUsed(tokens, (offset+number_of_processed_tokens), *(scope->function), output);
             } else {
                 throw InvalidSyntax((offset+number_of_processed_tokens), "unexpected token");
