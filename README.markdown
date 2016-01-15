@@ -35,4 +35,4 @@ written directly in Viua assembly:
 ```
 
 However, the longer the program is, the more lines are saved when it is written
-in PJAC-compilable language than in Viua assembly.
+in PJAC-compilable language rather than in Viua assembly.
