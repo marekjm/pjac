@@ -1189,7 +1189,12 @@ TokenVectorSize processWhileStatement(const TokenVector& tokens, TokenVectorSize
     output << "    branch " << scope->registerof(if_test_variable_name, i) << ' ';
     output << "+1 " << loop_name_end << '\n';
 
-    i += processBlock(tokens, i, scope, output);
+    // FIXME: memory leaks on exceptions thrown
+    // this is not severe as when an exception is thrown the only course of action is to
+    // terminate the program since the comiler cannot recover from invalid source code
+    Scope* block_scope = new Scope(scope->function, scope);
+    i += processBlock(tokens, i, block_scope, output);
+    delete block_scope;
 
     output << "    jump " << loop_name_begin << '\n';
     output << "    .mark: " << loop_name_end << '\n';
@@ -1452,6 +1457,8 @@ int main(int argc, char **argv) {
         compile_output << out.str();
     } catch (const InvalidSyntax& e) {
         cout << compilename << ':' << toks[e.tokenIndex()].line()+1 << ':' << toks[e.tokenIndex()].character()+1 << ": " << e.what() << endl;
+
+        cout << "note: source context: " << compilename << ':' << toks[e.tokenIndex()].line()+1 << endl;
         istringstream in(source_text);
         string line;
         int i = 0, tline = toks[e.tokenIndex()].line();
