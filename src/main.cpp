@@ -841,6 +841,10 @@ struct Scope {
         return type;
     }
 
+    bool isRegisteredClass(const string& s) {
+        return (s == "int" or s == "float" or s == "string" or s == "bool" or s == "auto");
+    }
+
     Scope(FunctionEnvironment *fn): parent(nullptr), function(fn) {}
     Scope(Scope* scp): parent(scp), function(nullptr) {}
     Scope(FunctionEnvironment *fn, Scope *scp): parent(scp), function(fn) {}
@@ -1141,7 +1145,7 @@ TokenVectorSize processFrame(const TokenVector& tokens, const string& function_t
 
         string p_name = scope->function->env->signatures.at(function_to_call).parameters[parameter_sources.size()];
         string p_type = scope->function->env->signatures.at(function_to_call).parameter_types.at(p_name);
-        if (p_type != "undefined" and p_type != scope->typeof(tokens[i], i)) {
+        if (p_type != "auto" and p_type != scope->typeof(tokens[i], i)) {
             throw InvalidSyntax(i, ("invalid type for parameter " + p_name + " expected " + p_type + " but got " + scope->typeof(tokens[i], i)));
         }
 
@@ -1304,11 +1308,15 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
     string param_name, param_type;
     for (; i < tokens.size() and tokens[i] != ")"; ++i) {
         param_type = tokens[i++];
-        param_name = tokens[i];
+        if (not scope->isRegisteredClass(param_type)) {
+            throw InvalidSyntax(i-1, ("invalid parameter type in function " + scope->function->header() + ": " + param_type));
+        }
 
+        param_name = tokens[i];
         if (not support::str::isname(param_name)) {
             throw InvalidSyntax(i, ("invalid parameter name in function " + scope->function->header() + ": " + param_name));
         }
+
         fenv.parameters.push_back(param_name);
         fenv.parameter_types[param_name] = param_type;
         if (tokens[i+1] == ",") {
