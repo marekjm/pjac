@@ -305,6 +305,10 @@ namespace support {
             return is;
         }
 
+        bool isbooleanliteral(const string& s) {
+            return (s == "true" or s == "false");
+        }
+
         vector<string> chunks(const string& s) {
             /*  Returns chunks of string.
              */
@@ -992,6 +996,9 @@ TokenVectorSize processVariable(const TokenVector& tokens, TokenVectorSize offse
             var_value = "0.0";
         } else if (var_type == "bool") {
             var_value = "false";
+        } else if (var_type == "auto") {
+            throw InvalidSyntax(i, ("unable to determine type of variable " + var_name + " in definition of function " +
+                        scope->function->header() + "; 'auto' cannot be used without initialisation"));
         } else {
             throw InvalidSyntax(i, ("invalid type of variable " + var_name + " in definition of function " +
                         scope->function->header() + ": " + var_type));
@@ -1013,6 +1020,19 @@ TokenVectorSize processVariable(const TokenVector& tokens, TokenVectorSize offse
             output << "strstore";
         } else if (var_type == "float") {
             output << "fstore";
+        } else if (var_type == "auto") {
+            if (support::str::isnum(var_value)) {
+                output << "istore";
+            } else if (var_value.size() >= 2 and var_value[0] == '"' and var_value[var_value.size()-1] == '"') {
+                output << "strstore";
+            } else if (var_value.size() >= 2 and var_value[0] == '\'' and var_value[var_value.size()-1] == '\'') {
+                output << "strstore";
+            } else if (support::str::isbooleanliteral(var_value)) {
+                var_type = "bool";
+            } else {
+                throw InvalidSyntax(offset, ("failed to determine type of auto variable " +
+                            var_name + " in function " + scope->function->header() + ": " + var_value));
+            }
         }
         if (var_type == "bool") {
             if (var_value == "false" or var_value == "0") {
