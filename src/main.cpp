@@ -980,9 +980,6 @@ TokenVectorSize processVariable(const TokenVector& tokens, TokenVectorSize offse
     // never store in register 0, if the value is not for return
     var_register = scope->size()+1;
 
-    scope->setregisterof(var_name, var_register);
-    scope->settypeof(var_name, var_type);
-
     ++i;
 
     output << "    .name: " << var_register << ' ' << var_name << '\n';
@@ -1008,9 +1005,11 @@ TokenVectorSize processVariable(const TokenVector& tokens, TokenVectorSize offse
         // skip terminating ";"
         ++i;
     }
-    scope->setvalueof(var_name, var_value);
 
     if (scope->defined(var_value) and scope->typeof(var_value, i) == var_type) {
+        output << "    copy " << var_register << ' ' << scope->registerof(var_value, i) << endl;
+    } else if (scope->defined(var_value) and scope->typeof(var_value, i) != var_type and var_type == "auto") {
+        var_type = scope->typeof(var_value, i);
         output << "    copy " << var_register << ' ' << scope->registerof(var_value, i) << endl;
     } else if (scope->defined(var_value) and scope->typeof(var_value, i) != var_type) {
         throw InvalidSyntax(i, ("cannot convert from " + scope->typeof(var_value, i) + " to " + var_type +
@@ -1051,6 +1050,10 @@ TokenVectorSize processVariable(const TokenVector& tokens, TokenVectorSize offse
             output << ' ' << var_register << ' ' << var_value << endl;
         }
     }
+
+    scope->setregisterof(var_name, var_register);
+    scope->settypeof(var_name, var_type);
+    scope->setvalueof(var_name, var_value);
 
     return (i-offset);
 }
