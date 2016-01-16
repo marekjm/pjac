@@ -950,6 +950,19 @@ vector<Token> reduceIntegers(const vector<Token>& tks) {
 
 vector<Token> reduceFloats(const vector<Token>& tks) {
     vector<Token> tokens;
+
+    Token token;
+    for (vector<string>::size_type i = 0; i < tks.size(); ++i) {
+        token = tks[i];
+        if (support::str::isnum(token) and i) {
+            if (i >= 2 and tks[i-1] == "." and support::str::isnum(tks[i-2])) {
+                token.textprepend(tks[i-2].text() + ".");
+                tokens.pop_back();
+                tokens.pop_back();
+            }
+        }
+        tokens.push_back(token);
+    }
     return tokens;
 }
 
@@ -1482,7 +1495,7 @@ int main(int argc, char **argv) {
     string source_text = support::io::readfile(filename);
 
     auto primitive_toks = support::str::lex(source_text);
-    auto toks = reduceIntegers(removeComments(primitive_toks));
+    auto toks = reduceFloats(reduceIntegers(removeComments(primitive_toks)));
 
     ostringstream out;
     try {
