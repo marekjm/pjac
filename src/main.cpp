@@ -950,6 +950,21 @@ vector<Token> removeComments(const vector<Token>& tks) {
     return tokens;
 }
 
+vector<Token> removeNewlines(const vector<Token>& tks) {
+    vector<Token> tokens;
+
+    Token token;
+    for (vector<string>::size_type i = 0; i < tks.size(); ++i) {
+        token = tks[i];
+        if (token == "\n") {
+            continue;
+        }
+        tokens.push_back(token);
+    }
+
+    return tokens;
+}
+
 vector<Token> reduceIntegers(const vector<Token>& tks) {
     vector<Token> tokens;
 
@@ -1214,7 +1229,7 @@ TokenVectorSize processCallWithReturnValueUsed(const TokenVector& tokens, TokenV
                     "mismatched type of return target variable " + return_to + " of type " + scope->typeof(return_to, offset-4) + " and return type of function " + scope->getFunctionSignature(function_to_call).header()));
     }
 
-    TokenVectorSize i = (processFrame(tokens, function_to_call, offset, scope, output) + 4);
+    TokenVectorSize i = (processFrame(tokens, function_to_call, offset, scope, output) + 3);
     output << "    call " << scope->registerof(return_to, (offset-4)) << ' ' << function_to_call << endl;
 
     return i;
@@ -1479,8 +1494,6 @@ TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, 
                 output << tokens[offset+number_of_processed_tokens].text() << ' ';
             }
             output << endl;
-        } else if (tokens[offset+number_of_processed_tokens] == "\n") {
-            continue;
         } else if (tokens[offset+number_of_processed_tokens] == ";") {
             continue;
         } else if (tokens[offset+number_of_processed_tokens] == "{") {
@@ -1582,7 +1595,7 @@ int main(int argc, char **argv) {
     string source_text = support::io::readfile(filename);
 
     auto primitive_toks = support::str::lex(source_text);
-    auto toks = reduceNamespacedNames(reduceNamespaceResolutionOperator(reduceFloats(reduceIntegers(removeComments(primitive_toks)))));
+    auto toks = reduceNamespacedNames(reduceNamespaceResolutionOperator(reduceFloats(reduceIntegers(removeNewlines(removeComments(primitive_toks))))));
 
     ostringstream out;
     try {
