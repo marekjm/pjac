@@ -1305,6 +1305,10 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
     for (; i < tokens.size() and tokens[i] != ")"; ++i) {
         param_type = tokens[i++];
         param_name = tokens[i];
+
+        if (not support::str::isname(param_name)) {
+            throw InvalidSyntax(i, ("invalid parameter name in function " + scope->function->header() + ": " + param_name));
+        }
         fenv.parameters.push_back(param_name);
         fenv.parameter_types[param_name] = param_type;
         if (tokens[i+1] == ",") {
