@@ -1014,13 +1014,7 @@ TokenVectorSize processVariable(const TokenVector& tokens, TokenVectorSize offse
         output << "    copy " << var_register << ' ' << scope->registerof(var_value, i) << endl;
     } else {
         output << "    ";
-        if (var_type == "int") {
-            output << "istore";
-        } else if (var_type == "string") {
-            output << "strstore";
-        } else if (var_type == "float") {
-            output << "fstore";
-        } else if (var_type == "auto") {
+        if (var_type == "auto") {
             if (support::str::isnum(var_value)) {
                 output << "istore";
             } else if (var_value.size() >= 2 and var_value[0] == '"' and var_value[var_value.size()-1] == '"') {
@@ -1033,6 +1027,13 @@ TokenVectorSize processVariable(const TokenVector& tokens, TokenVectorSize offse
                 throw InvalidSyntax(offset, ("failed to determine type of auto variable " +
                             var_name + " in function " + scope->function->header() + ": " + var_value));
             }
+        }
+        if (var_type == "int") {
+            output << "istore";
+        } else if (var_type == "string") {
+            output << "strstore";
+        } else if (var_type == "float") {
+            output << "fstore";
         }
         if (var_type == "bool") {
             if (var_value == "false" or var_value == "0") {
