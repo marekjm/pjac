@@ -1516,7 +1516,8 @@ TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, 
             } else if (scope->defined(tokens[offset+number_of_processed_tokens]) and tokens[offset+number_of_processed_tokens+1] == "=" and tokens[offset+number_of_processed_tokens+3] == "(") {
                 number_of_processed_tokens += processCallWithReturnValueUsed(tokens, (offset+number_of_processed_tokens), scope, output);
             } else {
-                throw InvalidSyntax((offset+number_of_processed_tokens), "unexpected token");
+                throw InvalidSyntax((offset+number_of_processed_tokens),
+                        ("unexpected token: " + support::str::strencode(tokens[offset+number_of_processed_tokens])));
             }
         }
     }
