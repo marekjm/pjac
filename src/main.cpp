@@ -845,6 +845,9 @@ struct Scope {
         return (s == "int" or s == "float" or s == "string" or s == "bool" or s == "auto");
     }
 
+    bool isDeclaredFunction(const string& s);
+    FunctionSignature getFunctionSignature(const string& s);
+
     Scope(FunctionEnvironment *fn): parent(nullptr), function(fn) {}
     Scope(Scope* scp): parent(scp), function(nullptr) {}
     Scope(FunctionEnvironment *fn, Scope *scp): parent(scp), function(fn) {}
@@ -902,6 +905,18 @@ struct FunctionEnvironment {
         delete scope;
     }
 };
+
+bool Scope::isDeclaredFunction(const string& s) {
+    return (function->env->signatures.count(s) or function->env->signatures.count("::" + s));
+}
+
+FunctionSignature Scope::getFunctionSignature(const string& s) {
+    if (function->env->signatures.count(s)) {
+        return function->env->signatures.at(s);
+    } else {
+        return function->env->signatures.at("::" + s);
+    }
+}
 
 
 vector<Token> removeComments(const vector<Token>& tks) {
@@ -1114,13 +1129,13 @@ TokenVectorSize processFrame(const TokenVector& tokens, const string& function_t
     TokenVectorSize i = offset;
     vector<unsigned> parameter_sources;
 
-    if (scope->function->env->signatures.count(function_to_call) == 0) {
+    if (not scope->isDeclaredFunction(function_to_call)) {
         throw InvalidSyntax(i, ("call to undefined function " + function_to_call));
     }
 
     if (tokens[i] == ")") {
-        if (scope->function->env->signatures.at(function_to_call).parameters.size() != 0) {
-            throw InvalidSyntax(i, ("missing parameters in call to function " + scope->function->env->signatures.at(function_to_call).header()));
+        if (scope->getFunctionSignature(function_to_call).parameters.size() != 0) {
+            throw InvalidSyntax(i, ("missing parameters in call to function " + scope->getFunctionSignature(function_to_call).header()));
         }
         output << "    frame 0" << endl;
         return 2; // number of processed tokens is 2: "(" and ";"
@@ -1139,12 +1154,12 @@ TokenVectorSize processFrame(const TokenVector& tokens, const string& function_t
             throw InvalidSyntax(i, oss.str());
         }
 
-        if (parameter_sources.size() >= scope->function->env->signatures.at(function_to_call).parameters.size()) {
+        if (parameter_sources.size() >= scope->getFunctionSignature(function_to_call).parameters.size()) {
             throw InvalidSyntax(i, ("too many parameters in call to function " + function_to_call));
         }
 
-        string p_name = scope->function->env->signatures.at(function_to_call).parameters[parameter_sources.size()];
-        string p_type = scope->function->env->signatures.at(function_to_call).parameter_types.at(p_name);
+        string p_name = scope->getFunctionSignature(function_to_call).parameters[parameter_sources.size()];
+        string p_type = scope->getFunctionSignature(function_to_call).parameter_types.at(p_name);
         if (p_type != "auto" and p_type != scope->typeof(tokens[i], i)) {
             throw InvalidSyntax(i, ("invalid type for parameter " + p_name + " expected " + p_type + " but got " + scope->typeof(tokens[i], i)));
         }
@@ -1155,8 +1170,8 @@ TokenVectorSize processFrame(const TokenVector& tokens, const string& function_t
         ++i;
     }
 
-    if (scope->function->env->signatures.at(function_to_call).parameters.size() != parameter_sources.size()) {
-        throw InvalidSyntax(i, ("missing parameters in call to function " + scope->function->env->signatures.at(function_to_call).header()));
+    if (scope->getFunctionSignature(function_to_call).parameters.size() != parameter_sources.size()) {
+        throw InvalidSyntax(i, ("missing parameters in call to function " + scope->getFunctionSignature(function_to_call).header()));
     }
 
     output << "    frame ^[";
@@ -1196,7 +1211,7 @@ TokenVectorSize processCallWithReturnValueUsed(const TokenVector& tokens, TokenV
 
     if (scope->typeof(return_to, offset-4) != scope->function->env->functions.at(function_to_call)) {
         throw InvalidSyntax(offset, (
-                    "mismatched type of return target variable " + return_to + " of type " + scope->typeof(return_to, offset-4) + " and return type of function " + scope->function->env->signatures.at(function_to_call).header()));
+                    "mismatched type of return target variable " + return_to + " of type " + scope->typeof(return_to, offset-4) + " and return type of function " + scope->getFunctionSignature(function_to_call).header()));
     }
 
     TokenVectorSize i = (processFrame(tokens, function_to_call, offset, scope, output) + 4);
@@ -1290,10 +1305,14 @@ TokenVectorSize processWhileStatement(const TokenVector& tokens, TokenVectorSize
     return (i - offset);
 }
 
-TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offset, CompilationEnvironment& cenv, ostringstream& output) {
+TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offset, CompilationEnvironment& cenv, ostringstream& output, const string& namespace_prefix = "") {
     TokenVectorSize number_of_processed_tokens = 0;
 
-    FunctionEnvironment fenv(tokens[offset + (number_of_processed_tokens++)], &cenv);
+    string name = tokens[offset + (number_of_processed_tokens++)];
+    if (namespace_prefix.size()) {
+        name = (namespace_prefix + "::" + name);
+    }
+    FunctionEnvironment fenv(name, &cenv);
     Scope* scope = fenv.scope;
 
     if ((offset+number_of_processed_tokens+2) >= tokens.size() or tokens[offset+number_of_processed_tokens] !=  "(") {
@@ -1402,6 +1421,17 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
     return number_of_processed_tokens;
 }
 
+TokenVectorSize processNamespace(const TokenVector& tokens, TokenVectorSize offset, CompilationEnvironment& cenv, ostringstream& output) {
+    TokenVectorSize number_of_processed_tokens = offset;
+
+    string name = tokens[number_of_processed_tokens++];
+
+    // skip {} for now
+    number_of_processed_tokens += 2;
+
+    return (number_of_processed_tokens-offset);
+}
+
 TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, Scope* scope, ostringstream& output) {
     TokenVectorSize number_of_processed_tokens = 0;
 
@@ -1505,6 +1535,8 @@ void processSource(const TokenVector& tokens, ostringstream& output) {
             i += processFunction(tokens, ++i, cenv, output);
         } else if(token == "\n") {
             // explicitly do nothing
+        } else if (token == "namespace") {
+            i += processNamespace(tokens, ++i, cenv, output);
         } else {
             throw InvalidSyntax(i, ("invalid top-level token: " + support::str::strencode(tokens[i].text())));
         }
