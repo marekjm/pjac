@@ -730,6 +730,22 @@ struct FunctionSignature {
     vector<string> parameters;
     map<string, string> parameter_types;
 
+    string type() const {
+        ostringstream oss;
+        oss << '(';
+        auto limit = (parameters.size()-1);
+        for (vector<string>::size_type i = 0; i < parameters.size(); ++i) {
+            oss << parameter_types.at(parameters[i]);
+            if (i < limit) {
+                oss << ",";
+            }
+        }
+        oss << ")->" << return_type;
+        return oss.str();
+    }
+    string typeof() const {
+        return ("function" + type());
+    }
     string header(bool full = false) const {
         ostringstream oss;
         oss << function_name << '(';
@@ -1093,6 +1109,9 @@ TokenVectorSize processVariable(const TokenVector& tokens, TokenVectorSize offse
     } else if (scope->defined(var_value) and scope->typeof(var_value, i) != var_type and var_type == "auto") {
         var_type = scope->typeof(var_value, i);
         output << "    copy " << var_register << ' ' << scope->registerof(var_value, i) << endl;
+    } else if (scope->isDeclaredFunction(var_value) and var_type == "auto") {
+        var_type = scope->getFunctionSignature(var_value).typeof();
+        output << "    function " << var_register << ' ' << var_value << endl;
     } else if (scope->defined(var_value) and scope->typeof(var_value, i) != var_type) {
         throw InvalidSyntax(i, ("cannot convert from " + scope->typeof(var_value, i) + " to " + var_type +
                     " in initialisation"));
