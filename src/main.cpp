@@ -1021,6 +1021,10 @@ TokenVectorSize processVariable(const TokenVector& tokens, TokenVectorSize offse
     var_type = tokens[i];
     var_name = tokens[++i];
 
+    if (not support::str::isname(var_name)) {
+        throw InvalidSyntax(i-1, ("invalid variable name in function " + scope->function->header() + ": " + var_name));
+    }
+
     // never store in register 0, if the value is not for return
     var_register = scope->size()+1;
 
