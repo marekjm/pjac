@@ -898,37 +898,6 @@ struct FunctionEnvironment {
 };
 
 
-vector<string> removeComments(const vector<string>& tks) {
-    vector<string> tokens;
-
-    string token = "", previous_token = "";
-    for (vector<string>::size_type i = 0; i < tks.size(); ++i) {
-        token = tks[i];
-
-        if (token == "/" and previous_token == "/") {
-            // double-slash comments go until the first newline
-            while (++i < tks.size() and tks[i] != "\n");
-            // last pushed token has to be removed as it is the starting "/"
-            tokens.pop_back();
-            continue;
-        }
-        if (token == "*" and previous_token == "/") {
-            // block comments go from "/*" to "*/"
-            // last pushed token has to be removed as it is the starting "/"
-            tokens.pop_back();
-            // skip the "*" of comment opening
-            ++i;
-            while (++i < tks.size() and not (tks[i-1] == "*" and tks[i] == "/"));
-            continue;
-        }
-
-        previous_token = token;
-        tokens.push_back(token);
-    }
-
-    return tokens;
-}
-
 vector<Token> removeComments(const vector<Token>& tks) {
     vector<Token> tokens;
 
