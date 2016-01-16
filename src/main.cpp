@@ -966,6 +966,44 @@ vector<Token> reduceFloats(const vector<Token>& tks) {
     return tokens;
 }
 
+vector<Token> reduceNamespaceResolutionOperator(const vector<Token>& tks) {
+    vector<Token> tokens;
+
+    Token token;
+    for (vector<string>::size_type i = 0; i < tks.size(); ++i) {
+        token = tks[i];
+        if (token == ":" and i) {
+            if (tks[i-1] == ":") {
+                token.text("::");
+                tokens.pop_back();
+            }
+        }
+        tokens.push_back(token);
+    }
+    return tokens;
+}
+
+vector<Token> reduceNamespacedNames(const vector<Token>& tks) {
+    vector<Token> tokens;
+
+    Token token;
+    for (vector<string>::size_type i = 0; i < tks.size(); ++i) {
+        token = tks[i];
+        if (support::str::isname(token)) {
+            while (i < (tks.size()-2)) {
+                if (tks[i+1] == "::" and support::str::isname(tks[i+2])) {
+                    token.text(token.text() + "::" + tks[i+2].text());
+                    i += 2;
+                } else {
+                    break;
+                }
+            }
+        }
+        tokens.push_back(token);
+    }
+    return tokens;
+}
+
 vector<string> mapStringVector(const vector<string>& sv, string(*fn)(const string&)) {
     vector<string> mapped;
     for (vector<string>::size_type i = 0; i < sv.size(); ++i) {
@@ -1495,7 +1533,7 @@ int main(int argc, char **argv) {
     string source_text = support::io::readfile(filename);
 
     auto primitive_toks = support::str::lex(source_text);
-    auto toks = reduceFloats(reduceIntegers(removeComments(primitive_toks)));
+    auto toks = reduceNamespacedNames(reduceNamespaceResolutionOperator(reduceFloats(reduceIntegers(removeComments(primitive_toks)))));
 
     ostringstream out;
     try {
