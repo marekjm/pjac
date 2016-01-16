@@ -66,6 +66,8 @@ class Token {
         decltype(character_number) character() const { return character_number; }
         decltype(byte_number) byte() const { return byte_number; }
         string text() const { return token_string; }
+        void text(const string& s) { token_string = s; }
+        void textprepend(const string& s) { token_string = (s + token_string); }
 
         bool operator==(const string& s) const {
             return (token_string == s);
@@ -929,6 +931,28 @@ vector<Token> removeComments(const vector<Token>& tks) {
     return tokens;
 }
 
+vector<Token> reduceIntegers(const vector<Token>& tks) {
+    vector<Token> tokens;
+
+    Token token;
+    for (vector<string>::size_type i = 0; i < tks.size(); ++i) {
+        token = tks[i];
+        if (support::str::isnum(token) and i) {
+            if (i >= 2 and tks[i-1] == "-" and tks[i-2] == "=") {
+                tokens.pop_back();
+                token.textprepend("-");
+            }
+        }
+        tokens.push_back(token);
+    }
+    return tokens;
+}
+
+vector<Token> reduceFloats(const vector<Token>& tks) {
+    vector<Token> tokens;
+    return tokens;
+}
+
 vector<string> mapStringVector(const vector<string>& sv, string(*fn)(const string&)) {
     vector<string> mapped;
     for (vector<string>::size_type i = 0; i < sv.size(); ++i) {
@@ -1458,7 +1482,7 @@ int main(int argc, char **argv) {
     string source_text = support::io::readfile(filename);
 
     auto primitive_toks = support::str::lex(source_text);
-    auto toks = removeComments(primitive_toks);
+    auto toks = reduceIntegers(removeComments(primitive_toks));
 
     ostringstream out;
     try {
