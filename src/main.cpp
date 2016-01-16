@@ -1010,8 +1010,11 @@ TokenVectorSize processVariable(const TokenVector& tokens, TokenVectorSize offse
     }
     scope->setvalueof(var_name, var_value);
 
-    if (scope->defined(var_value)) {
+    if (scope->defined(var_value) and scope->typeof(var_value, i) == var_type) {
         output << "    copy " << var_register << ' ' << scope->registerof(var_value, i) << endl;
+    } else if (scope->defined(var_value) and scope->typeof(var_value, i) != var_type) {
+        throw InvalidSyntax(i, ("cannot convert from " + scope->typeof(var_value, i) + " to " + var_type +
+                    " in initialisation"));
     } else {
         output << "    ";
         if (var_type == "auto") {
