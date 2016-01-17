@@ -852,6 +852,16 @@ struct Scope {
         return type;
     }
 
+    string valueof(const string& name, TokenVectorSize offset) {
+        if (variable_values.count(name)) {
+            return variable_values.at(name);
+        } else if (parent == nullptr) {
+            throw InvalidSyntax(offset, ("access to name not present in scope: " + name));
+        } else {
+            return parent->valueof(name, offset);
+        }
+    }
+
     string setvalueof(const string& name, const string& type) {
         variable_values[name] = type;
         return type;
@@ -1159,9 +1169,13 @@ TokenVectorSize processVariable(const TokenVector& tokens, TokenVectorSize offse
     return (i-offset);
 }
 
-TokenVectorSize processFrame(const TokenVector& tokens, const string& function_to_call, TokenVectorSize offset, Scope* scope, ostringstream& output) {
+TokenVectorSize processFrame(const TokenVector& tokens, string& function_to_call, TokenVectorSize offset, Scope* scope, ostringstream& output) {
     TokenVectorSize i = offset;
     vector<unsigned> parameter_sources;
+
+    if (scope->defined(function_to_call) and support::str::startswith(scope->typeof(function_to_call, i), "function")) {
+        function_to_call = scope->valueof(function_to_call, i);
+    }
 
     if (not scope->isDeclaredFunction(function_to_call)) {
         throw InvalidSyntax(i, ("call to undefined function " + function_to_call));
