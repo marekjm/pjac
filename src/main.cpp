@@ -1468,7 +1468,7 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
     number_of_processed_tokens += processBlock(tokens, (offset+number_of_processed_tokens), scope, output);
 
     if (not fenv.has_returned) {
-        output << "    end" << endl;
+        output << "    return" << endl;
     }
     if (not fenv.has_returned and fenv.return_type != "void") {
         throw InvalidSyntax(i, ("function " + fenv.header() + " declared return type " + fenv.return_type + " but reached end of definition without return statement"));
@@ -1535,7 +1535,7 @@ TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, 
             }
 
             // no need to deal with terminating ";" as loop increment will take care of it
-            output << "    end" << endl;
+            output << "    return" << endl;
         } else if (tokens[offset+number_of_processed_tokens] == "asm") {
             output << "    ";
             while (tokens[offset + (++number_of_processed_tokens)] != ";") {
