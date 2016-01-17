@@ -884,6 +884,7 @@ struct FunctionEnvironment {
     map<string, string> parameter_types;
 
     string return_type;
+    bool automatic_return_type;
 
     unsigned begin_balance;
     string function_name;
@@ -911,11 +912,12 @@ struct FunctionEnvironment {
                 oss << ", ";
             }
         }
-        oss << ")->" << return_type;
+        oss << ")->" << (automatic_return_type ? "auto" : return_type);
         return oss.str();
     }
 
     FunctionEnvironment(const string& s, CompilationEnvironment* ce):
+        automatic_return_type(false),
         begin_balance(0),
         function_name(s),
         has_returned(false),
@@ -1423,8 +1425,11 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
         // skip over "-" and ">" that make up return type specifier
         number_of_processed_tokens += 2;
         fenv.return_type = tokens[offset + (number_of_processed_tokens++)];
-        if (fenv.return_type != "void" and fenv.return_type != "string" and fenv.return_type != "int" and fenv.return_type != "float" and fenv.return_type != "bool") {
+        if (not scope->isRegisteredClass(fenv.return_type)) {
             throw InvalidSyntax((offset+number_of_processed_tokens), ("invalid return type in definition of function " + fenv.function_name));
+        }
+        if (fenv.return_type == "auto") {
+            fenv.automatic_return_type = true;
         }
     } else {
         fenv.return_type = "void";
@@ -1496,6 +1501,9 @@ TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, 
             if (tokens[offset + number_of_processed_tokens] != ";") {
                 // this if deals with `return <number> ;` case
                 if (support::str::isnum(tokens[offset+number_of_processed_tokens])) {
+                    if (scope->function->return_type == "auto") {
+                        scope->function->return_type = "int";
+                    }
                     if (scope->function->return_type != "int") {
                         throw InvalidSyntax((offset+number_of_processed_tokens), ("mismatched return type in function " + scope->function->header() + ", expected " + scope->function->return_type + " but got int"));
                     }
@@ -1505,6 +1513,9 @@ TokenVectorSize processBlock(const TokenVector& tokens, TokenVectorSize offset, 
                         output << "    istore 0 " << tokens[offset+number_of_processed_tokens].text() << endl;
                     }
                 } else if (scope->registerof(tokens[offset+number_of_processed_tokens], offset+number_of_processed_tokens) != 0) {
+                    if (scope->function->return_type == "auto") {
+                        scope->function->return_type = scope->typeof(tokens[offset+number_of_processed_tokens], offset+number_of_processed_tokens);
+                    }
                     if (scope->function->return_type != scope->typeof(tokens[offset+number_of_processed_tokens], offset+number_of_processed_tokens)) {
                         throw InvalidSyntax((offset+number_of_processed_tokens), ("mismatched return type in function " + scope->function->header() + ", expected " + scope->function->return_type + " but got " + scope->typeof(tokens[offset+number_of_processed_tokens], offset+number_of_processed_tokens)));
                     }
