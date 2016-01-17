@@ -1259,7 +1259,11 @@ TokenVectorSize processCallWithReturnValueUsed(const TokenVector& tokens, TokenV
     // skip opening "("
     ++offset;
 
-    if (scope->typeof(return_to, offset-4) != scope->function->env->functions.at(function_to_call)) {
+    // FIXME: functions with "auto" parameters should be considered templates and
+    // have special routines for checking "actual" return type
+    // for now, let's assume the programmer knows what he's doing
+    string function_return_type = scope->function->env->functions.at(function_to_call);
+    if (scope->typeof(return_to, offset-4) != function_return_type and function_return_type != "auto") {
         throw InvalidSyntax(offset, (
                     "mismatched type of return target variable " + return_to + " of type " + scope->typeof(return_to, offset-4) + " and return type of function " + scope->getFunctionSignature(function_to_call).header()));
     }
