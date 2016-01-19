@@ -1131,11 +1131,11 @@ TokenVectorSize processVariable(const TokenVector& tokens, TokenVectorSize offse
         output << "    ";
         if (var_type == "auto") {
             if (support::str::isnum(var_value)) {
-                output << "istore";
+                var_type = "int";
             } else if (var_value.size() >= 2 and var_value[0] == '"' and var_value[var_value.size()-1] == '"') {
-                output << "strstore";
+                var_type = "string";
             } else if (var_value.size() >= 2 and var_value[0] == '\'' and var_value[var_value.size()-1] == '\'') {
-                output << "strstore";
+                var_type = "string";
             } else if (support::str::isbooleanliteral(var_value)) {
                 var_type = "bool";
             } else {
