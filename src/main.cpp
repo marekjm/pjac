@@ -1205,6 +1205,133 @@ TokenVectorSize processVariable(const TokenVector& tokens, TokenVectorSize offse
     return (i-offset);
 }
 
+TokenVectorSize processCallWithReturnValueUsedWithSpecifiedReturnRegister(const string& return_to, const TokenVector& tokens, TokenVectorSize offset, Scope* scope, ostringstream& output);
+
+TokenVectorSize processFrameNested(const TokenVector& tokens, string& function_to_call, TokenVectorSize offset, Scope* scope, ostringstream& output) {
+    TokenVectorSize i = offset;
+    vector<unsigned> parameter_sources;
+
+    if (scope->defined(function_to_call) and support::str::startswith(scope->typeof(function_to_call, i), "function")) {
+        function_to_call = scope->valueof(function_to_call, i);
+    }
+
+    if (not scope->isDeclaredFunction(function_to_call)) {
+        throw InvalidSyntax(i, ("call to undefined function " + function_to_call));
+    }
+
+    if (tokens[i] == ")") {
+        if (scope->getFunctionSignature(function_to_call).parameters.size() != 0) {
+            throw InvalidSyntax(i, ("missing parameters in call to function " + scope->getFunctionSignature(function_to_call).header()));
+        }
+        output << "    frame 0" << endl;
+        return 2; // number of processed tokens is 2: "(" and ";"
+    }
+
+    string parameter_name;
+    for (; i < tokens.size() and (not (tokens[i] == ")" or tokens[i] == ",")); ++i) {
+        parameter_name = tokens[i];
+        if (parameter_name == ")") {
+            throw InvalidSyntax(i, ("unexpected end of parameter list in call to function `" + function_to_call + "`"));
+        }
+        if (not support::str::isname(parameter_name)) {
+            string var_type = inferType(parameter_name);
+            string var_value = parameter_name;
+            int var_register = scope->size()+1;
+            parameter_name = ("_temporary_variable_" + support::str::stringify(var_register));
+            scope->setregisterof(parameter_name, var_register);
+            scope->settypeof(parameter_name, var_type);
+            scope->setvalueof(parameter_name, var_value);
+            output << "    ";
+            if (var_type == "int") {
+                output << "istore";
+            } else if (var_type == "string") {
+                output << "strstore";
+            } else if (var_type == "float") {
+                output << "fstore";
+            }
+            if (var_type == "bool") {
+                if (var_value == "false" or var_value == "0") {
+                    output << "not (not (istore " << var_register << " 0))" << endl;
+                } else if (var_value == "true" or var_value == "1") {
+                    output << "not (istore " << var_register << " 0)" << endl;
+                }
+            } else {
+                output << ' ' << var_register << ' ' << var_value << endl;
+            }
+            if (var_type.size() == 0) {
+                throw InvalidSyntax(i, ("invalid literal used as a parameter in call to function `" + function_to_call + "`"));
+            }
+        }
+        if (not (scope->defined(parameter_name) or scope->isDeclaredFunction(parameter_name))) {
+            ostringstream oss;
+            oss << "undefined name as parameter: `" << parameter_name << "` in call to function `";
+            oss << function_to_call << "`" << "\n";
+            oss << "note: parameters in scope:\n";
+            vector<string> names = scope->names();
+            for (unsigned ps = 0; ps < names.size(); ++ps) {
+                oss << "    " << scope->typeof(names[ps], i) << ' ' << names[ps] << ';' << endl;
+            }
+            throw InvalidSyntax(i, oss.str());
+        }
+
+        auto signature = scope->getFunctionSignature(function_to_call);
+        if (parameter_sources.size() >= signature.parameters.size()) {
+            throw InvalidSyntax(i, ("too many parameters in call to function " + function_to_call + signature.type()));
+        }
+
+        string p_name = scope->getFunctionSignature(function_to_call).parameters[parameter_sources.size()];
+        string p_type = scope->getFunctionSignature(function_to_call).parameter_types.at(p_name);
+
+        if (scope->isDeclaredFunction(parameter_name) and tokens[i+1] == "(") {
+            // assume it's a call and hope for the best
+            auto tmp_param_register = (scope->size()+1);
+            string tmp_param_name = ("_tmp_variable_param_" + support::str::stringify(tmp_param_register));
+            scope->setregisterof(tmp_param_name, tmp_param_register);
+            scope->settypeof(tmp_param_name, scope->getFunctionSignature(parameter_name).return_type);
+            scope->setvalueof(tmp_param_name, parameter_name);
+            i += processCallWithReturnValueUsedWithSpecifiedReturnRegister(tmp_param_name, tokens, i, scope, output);
+            parameter_name = tmp_param_name;
+        }
+
+        if (scope->isDeclaredFunction(parameter_name)) {
+            auto tmp_param_register = (scope->size()+1);
+            string tmp_param_name = ("_tmp_variable_param_" + support::str::stringify(tmp_param_register));
+            output << "    function " << tmp_param_register << ' ' << parameter_name << endl;
+            scope->setregisterof(tmp_param_name, tmp_param_register);
+            scope->settypeof(tmp_param_name, scope->getFunctionSignature(parameter_name).typeof());
+            scope->setvalueof(tmp_param_name, parameter_name);
+            parameter_name = tmp_param_name;
+        }
+
+        if (p_type != "auto" and p_type != scope->typeof(parameter_name, i)) {
+            throw InvalidSyntax(i, ("invalid type for parameter " + p_name + " expected " + p_type + " but got " + scope->typeof(parameter_name, i)));
+        }
+        parameter_sources.push_back(scope->registerof(parameter_name, i));
+
+        // account for both "," between parameters and
+        // closing ")"
+        ++i;
+    }
+
+    if (scope->getFunctionSignature(function_to_call).parameters.size() != parameter_sources.size()) {
+        throw InvalidSyntax(i, ("missing parameters in call to function " + scope->getFunctionSignature(function_to_call).header()));
+    }
+
+    output << "    frame ^[";
+    for (unsigned j = 0; j < parameter_sources.size(); ++j) {
+        output << "(param " << j << ' ' << parameter_sources[j] << ')';
+        if (j < (parameter_sources.size()-1)) {
+            output << ' ';
+        }
+    }
+    output << "]" << endl;
+
+    // skip terminating ";"
+    ++i;
+
+    return (i-offset);
+}
+
 TokenVectorSize processFrame(const TokenVector& tokens, string& function_to_call, TokenVectorSize offset, Scope* scope, ostringstream& output) {
     TokenVectorSize i = offset;
     vector<unsigned> parameter_sources;
@@ -1280,6 +1407,17 @@ TokenVectorSize processFrame(const TokenVector& tokens, string& function_to_call
         string p_name = scope->getFunctionSignature(function_to_call).parameters[parameter_sources.size()];
         string p_type = scope->getFunctionSignature(function_to_call).parameter_types.at(p_name);
 
+        if (scope->isDeclaredFunction(parameter_name) and tokens[i+1] == "(") {
+            // assume it's a call and hope for the best
+            auto tmp_param_register = (scope->size()+1);
+            string tmp_param_name = ("_tmp_variable_param_" + support::str::stringify(tmp_param_register));
+            scope->setregisterof(tmp_param_name, tmp_param_register);
+            scope->settypeof(tmp_param_name, scope->getFunctionSignature(parameter_name).return_type);
+            scope->setvalueof(tmp_param_name, parameter_name);
+            i += processCallWithReturnValueUsedWithSpecifiedReturnRegister(tmp_param_name, tokens, i, scope, output);
+            parameter_name = tmp_param_name;
+        }
+
         if (scope->isDeclaredFunction(parameter_name)) {
             auto tmp_param_register = (scope->size()+1);
             string tmp_param_name = ("_tmp_variable_param_" + support::str::stringify(tmp_param_register));
@@ -1325,6 +1463,26 @@ TokenVectorSize processCall(const TokenVector& tokens, TokenVectorSize offset, S
     ++offset;
     TokenVectorSize i = processFrame(tokens, function_to_call, offset, scope, output);
     output << "    call 0 " << function_to_call << endl;
+
+    return i;
+}
+TokenVectorSize processCallWithReturnValueUsedWithSpecifiedReturnRegister(const string& return_to, const TokenVector& tokens, TokenVectorSize offset, Scope* scope, ostringstream& output) {
+    string function_to_call = tokens[offset++];
+
+    // skip opening "("
+    ++offset;
+
+    // FIXME: functions with "auto" parameters should be considered templates and
+    // have special routines for checking "actual" return type
+    // for now, let's assume the programmer knows what he's doing
+    string function_return_type = scope->function->env->functions.at(function_to_call);
+    if (scope->typeof(return_to, offset-4) != function_return_type and function_return_type != "auto") {
+        throw InvalidSyntax(offset, (
+                    "mismatched type of return target variable " + return_to + " of type " + scope->typeof(return_to, offset-4) + " and return type of function " + scope->getFunctionSignature(function_to_call).header()));
+    }
+
+    TokenVectorSize i = processFrameNested(tokens, function_to_call, offset, scope, output);
+    output << "    call " << scope->registerof(return_to, (offset-4)) << ' ' << function_to_call << endl;
 
     return i;
 }
