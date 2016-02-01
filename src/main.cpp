@@ -1260,7 +1260,7 @@ TokenVectorSize processFrame(const TokenVector& tokens, string& function_to_call
                 throw InvalidSyntax(i, ("invalid literal used as a parameter in call to function `" + function_to_call + "`"));
             }
         }
-        if (not scope->defined(parameter_name)) {
+        if (not (scope->defined(parameter_name) or scope->isDeclaredFunction(parameter_name))) {
             ostringstream oss;
             oss << "undefined name as parameter: `" << parameter_name << "` in call to function `";
             oss << function_to_call << "`" << "\n";
@@ -1279,6 +1279,17 @@ TokenVectorSize processFrame(const TokenVector& tokens, string& function_to_call
 
         string p_name = scope->getFunctionSignature(function_to_call).parameters[parameter_sources.size()];
         string p_type = scope->getFunctionSignature(function_to_call).parameter_types.at(p_name);
+
+        if (scope->isDeclaredFunction(parameter_name)) {
+            auto tmp_param_register = (scope->size()+1);
+            string tmp_param_name = ("_tmp_variable_param_" + support::str::stringify(tmp_param_register));
+            output << "    function " << tmp_param_register << ' ' << parameter_name << endl;
+            scope->setregisterof(tmp_param_name, tmp_param_register);
+            scope->settypeof(tmp_param_name, scope->getFunctionSignature(parameter_name).typeof());
+            scope->setvalueof(tmp_param_name, parameter_name);
+            parameter_name = tmp_param_name;
+        }
+
         if (p_type != "auto" and p_type != scope->typeof(parameter_name, i)) {
             throw InvalidSyntax(i, ("invalid type for parameter " + p_name + " expected " + p_type + " but got " + scope->typeof(parameter_name, i)));
         }
@@ -1465,6 +1476,7 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
     string param_name, param_type;
     for (; i < tokens.size() and tokens[i] != ")"; ++i) {
         param_type = tokens[i++];
+
         if (not scope->isRegisteredClass(param_type)) {
             throw InvalidSyntax(i-1, ("invalid parameter type in function " + scope->function->header() + ": " + param_type));
         }
