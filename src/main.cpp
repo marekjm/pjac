@@ -1264,8 +1264,9 @@ TokenVectorSize processFrame(const TokenVector& tokens, string& function_to_call
             throw InvalidSyntax(i, oss.str());
         }
 
-        if (parameter_sources.size() >= scope->getFunctionSignature(function_to_call).parameters.size()) {
-            throw InvalidSyntax(i, ("too many parameters in call to function " + function_to_call));
+        auto signature = scope->getFunctionSignature(function_to_call);
+        if (parameter_sources.size() >= signature.parameters.size() and not signature.parameter_var_length[signature.parameters[signature.parameters.size()-1]]) {
+            throw InvalidSyntax(i, ("too many parameters in call to function " + function_to_call + signature.type()));
         }
 
         string p_name = scope->getFunctionSignature(function_to_call).parameters[parameter_sources.size()];
