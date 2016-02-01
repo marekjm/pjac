@@ -1192,6 +1192,10 @@ TokenVectorSize processFrame(const TokenVector& tokens, string& function_to_call
     }
 
     string parameter_name;
+    for (; i < tokens.size() and tokens[i] != ";"; ++i) {
+        if (not support::str::isname(parameter_name)) {
+            throw InvalidSyntax(i, ("literal used as a parameter in call to function `" + function_to_call + "`"));
+        }
         if (not scope->defined(tokens[i])) {
             ostringstream oss;
             oss << "undefined name as parameter: `" << tokens[i].text() << "` in call to function `";
