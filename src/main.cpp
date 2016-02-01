@@ -882,6 +882,7 @@ struct Scope {
 struct FunctionEnvironment {
     vector<string> parameters;
     map<string, string> parameter_types;
+    map<string, bool> parameter_var_length;
 
     string return_type;
     bool automatic_return_type;
@@ -1448,10 +1449,14 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
 
         fenv.parameters.push_back(param_name);
         fenv.parameter_types[param_name] = param_type;
+        fenv.parameter_var_length[param_name] = false;
         if (tokens[i+1] == ",") {
             ++i;
         } else if (tokens[i+1] == ")") {
             // explicitly do nothing
+        } else if (tokens[i+1] == "...") {
+            fenv.parameter_var_length[param_name] = true;
+            ++i;
         } else {
             throw InvalidSyntax(i+1, ("unexpected token in parameters list of function " + fenv.function_name + ": " + tokens[i+1].text()));
         }
