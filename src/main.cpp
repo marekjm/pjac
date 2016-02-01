@@ -1202,11 +1202,37 @@ TokenVectorSize processFrame(const TokenVector& tokens, string& function_to_call
     for (; i < tokens.size() and tokens[i] != ";"; ++i) {
         parameter_name = tokens[i];
         if (not support::str::isname(parameter_name)) {
-            throw InvalidSyntax(i, (inferType(parameter_name) + " literal used as a parameter in call to function `" + function_to_call + "`"));
+            string var_type = inferType(parameter_name);
+            string var_value = parameter_name;
+            int var_register = scope->size()+1;
+            parameter_name = ("_temporary_variable_" + support::str::stringify(var_register));
+            scope->setregisterof(parameter_name, var_register);
+            scope->settypeof(parameter_name, var_type);
+            scope->setvalueof(parameter_name, var_value);
+            output << "    ";
+            if (var_type == "int") {
+                output << "istore";
+            } else if (var_type == "string") {
+                output << "strstore";
+            } else if (var_type == "float") {
+                output << "fstore";
+            }
+            if (var_type == "bool") {
+                if (var_value == "false" or var_value == "0") {
+                    output << "not (not (istore " << var_register << " 0))" << endl;
+                } else if (var_value == "true" or var_value == "1") {
+                    output << "not (istore " << var_register << " 0)" << endl;
+                }
+            } else {
+                output << ' ' << var_register << ' ' << var_value << endl;
+            }
+            if (var_type.size() == 0) {
+                throw InvalidSyntax(i, ("invalid literal used as a parameter in call to function `" + function_to_call + "`"));
+            }
         }
-        if (not scope->defined(tokens[i])) {
+        if (not scope->defined(parameter_name)) {
             ostringstream oss;
-            oss << "undefined name as parameter: `" << tokens[i].text() << "` in call to function `";
+            oss << "undefined name as parameter: `" << parameter_name << "` in call to function `";
             oss << function_to_call << "`" << "\n";
             oss << "note: parameters in scope:\n";
             vector<string> names = scope->names();
