@@ -1075,6 +1075,21 @@ vector<string> mapStringVector(const vector<string>& sv, string(*fn)(const strin
 }
 
 
+string inferType(const string& var_value) {
+    string var_type;
+    if (support::str::isnum(var_value)) {
+        var_type = "int";
+    } else if (var_value.size() >= 2 and var_value[0] == '"' and var_value[var_value.size()-1] == '"') {
+        var_type = "string";
+    } else if (var_value.size() >= 2 and var_value[0] == '\'' and var_value[var_value.size()-1] == '\'') {
+        var_type = "string";
+    } else if (support::str::isbooleanliteral(var_value)) {
+        var_type = "bool";
+    }
+    return var_type;
+}
+
+
 TokenVectorSize processVariable(const TokenVector& tokens, TokenVectorSize offset, Scope* scope, ostringstream& output) {
     TokenVectorSize i = offset;
     string var_name = "", var_type = "", var_value = "";
@@ -1130,15 +1145,7 @@ TokenVectorSize processVariable(const TokenVector& tokens, TokenVectorSize offse
     } else {
         output << "    ";
         if (var_type == "auto") {
-            if (support::str::isnum(var_value)) {
-                var_type = "int";
-            } else if (var_value.size() >= 2 and var_value[0] == '"' and var_value[var_value.size()-1] == '"') {
-                var_type = "string";
-            } else if (var_value.size() >= 2 and var_value[0] == '\'' and var_value[var_value.size()-1] == '\'') {
-                var_type = "string";
-            } else if (support::str::isbooleanliteral(var_value)) {
-                var_type = "bool";
-            } else {
+            if ((var_type = inferType(var_value)).size() == 0) {
                 throw InvalidSyntax(offset, ("failed to determine type of auto variable " +
                             var_name + " in function " + scope->function->header() + ": " + var_value));
             }
