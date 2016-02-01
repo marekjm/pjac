@@ -1191,7 +1191,7 @@ TokenVectorSize processFrame(const TokenVector& tokens, string& function_to_call
         return 2; // number of processed tokens is 2: "(" and ";"
     }
 
-    for (; i < tokens.size() and tokens[i] != ";"; ++i) {
+    string parameter_name;
         if (not scope->defined(tokens[i])) {
             ostringstream oss;
             oss << "undefined name as parameter: `" << tokens[i].text() << "` in call to function `";
@@ -1210,11 +1210,11 @@ TokenVectorSize processFrame(const TokenVector& tokens, string& function_to_call
 
         string p_name = scope->getFunctionSignature(function_to_call).parameters[parameter_sources.size()];
         string p_type = scope->getFunctionSignature(function_to_call).parameter_types.at(p_name);
-        if (p_type != "auto" and p_type != scope->typeof(tokens[i], i)) {
-            throw InvalidSyntax(i, ("invalid type for parameter " + p_name + " expected " + p_type + " but got " + scope->typeof(tokens[i], i)));
+        if (p_type != "auto" and p_type != scope->typeof(parameter_name, i)) {
+            throw InvalidSyntax(i, ("invalid type for parameter " + p_name + " expected " + p_type + " but got " + scope->typeof(parameter_name, i)));
         }
+        parameter_sources.push_back(scope->registerof(parameter_name, i));
 
-        parameter_sources.push_back(scope->registerof(tokens[i], i));
         // account for both "," between parameters and
         // closing ")"
         ++i;
