@@ -1202,7 +1202,7 @@ TokenVectorSize processFrame(const TokenVector& tokens, string& function_to_call
     for (; i < tokens.size() and tokens[i] != ";"; ++i) {
         parameter_name = tokens[i];
         if (not support::str::isname(parameter_name)) {
-            throw InvalidSyntax(i, ("literal used as a parameter in call to function `" + function_to_call + "`"));
+            throw InvalidSyntax(i, (inferType(parameter_name) + " literal used as a parameter in call to function `" + function_to_call + "`"));
         }
         if (not scope->defined(tokens[i])) {
             ostringstream oss;
