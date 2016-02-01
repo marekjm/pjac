@@ -1028,6 +1028,24 @@ vector<Token> reduceFloats(const vector<Token>& tks) {
     return tokens;
 }
 
+vector<Token> reduceVariableLengthOperator(const vector<Token>& tks) {
+    vector<Token> tokens;
+
+    Token token;
+    for (vector<string>::size_type i = 0; i < tks.size(); ++i) {
+        token = tks[i];
+        if (token == "." and i) {
+            if (i >= 2 and tks[i-1] == "." and tks[i-2] == ".") {
+                token.textprepend("..");
+                tokens.pop_back();
+                tokens.pop_back();
+            }
+        }
+        tokens.push_back(token);
+    }
+    return tokens;
+}
+
 vector<Token> reduceNamespaceResolutionOperator(const vector<Token>& tks) {
     vector<Token> tokens;
 
@@ -1435,7 +1453,7 @@ TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offse
         } else if (tokens[i+1] == ")") {
             // explicitly do nothing
         } else {
-            throw InvalidSyntax(i, ("unexpected token in parameters list of function " + fenv.function_name + ": " + tokens[i].text()));
+            throw InvalidSyntax(i+1, ("unexpected token in parameters list of function " + fenv.function_name + ": " + tokens[i+1].text()));
         }
         number_of_processed_tokens += 3;
     }
@@ -1681,7 +1699,7 @@ int main(int argc, char **argv) {
     string source_text = support::io::readfile(filename);
 
     auto primitive_toks = support::str::lex(source_text);
-    auto toks = reduceNamespacedNames(reduceNamespaceResolutionOperator(reduceFloats(reduceIntegers(removeNewlines(removeComments(primitive_toks))))));
+    auto toks = reduceVariableLengthOperator(reduceNamespacedNames(reduceNamespaceResolutionOperator(reduceFloats(reduceIntegers(removeNewlines(removeComments(primitive_toks)))))));
 
     ostringstream out;
     try {
