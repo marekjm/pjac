@@ -1,5 +1,5 @@
-function echo(undefined msg) { asm echo msg; }
-function print(undefined msg) { asm print msg; }
+function echo(auto msg) { asm echo msg; }
+function print(auto msg) { asm print msg; }
 function decrement(int a) -> int { asm idec a; return a; }
 
 function recursive(int counter) {
