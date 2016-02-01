@@ -770,9 +770,17 @@ struct FunctionSignature {
     FunctionSignature(): function_name(""), return_type("") {}
 };
 
+struct Class {
+    string name;
+
+    Class(): name("") {}
+    Class(const string& n): name(n) {}
+};
+
 struct CompilationEnvironment {
     map<string, string> functions;
     map<string, FunctionSignature> signatures;
+    map<string, Class> classes;
 };
 
 struct Scope {
@@ -1420,6 +1428,21 @@ TokenVectorSize processWhileStatement(const TokenVector& tokens, TokenVectorSize
     return (i - offset);
 }
 
+TokenVectorSize processClass(const TokenVector& tokens, TokenVectorSize offset, CompilationEnvironment& cenv, ostringstream& output, const string& namespace_prefix = "") {
+    TokenVectorSize number_of_processed_tokens = 0;
+
+    string name = tokens[offset + (number_of_processed_tokens++)];
+    if (namespace_prefix.size()) {
+        name = (namespace_prefix + "::" + name);
+    }
+
+    Class klass(name);
+
+    cenv.classes[name] = klass;
+
+    return number_of_processed_tokens;
+}
+
 TokenVectorSize processFunction(const TokenVector& tokens, TokenVectorSize offset, CompilationEnvironment& cenv, ostringstream& output, const string& namespace_prefix = "") {
     TokenVectorSize number_of_processed_tokens = 0;
 
@@ -1660,6 +1683,8 @@ void processSource(const TokenVector& tokens, ostringstream& output) {
         token = tokens[i];
         if (token == "function") {
             i += processFunction(tokens, ++i, cenv, output);
+        } else if (token == "class") {
+            i += processClass(tokens, ++i, cenv, output);
         } else if(token == "\n") {
             // explicitly do nothing
         } else if (token == "namespace") {
