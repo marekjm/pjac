@@ -1265,7 +1265,7 @@ TokenVectorSize processFrame(const TokenVector& tokens, string& function_to_call
         }
 
         auto signature = scope->getFunctionSignature(function_to_call);
-        if (parameter_sources.size() >= signature.parameters.size() and not signature.parameter_var_length[signature.parameters[signature.parameters.size()-1]]) {
+        if (parameter_sources.size() >= signature.parameters.size()) {
             throw InvalidSyntax(i, ("too many parameters in call to function " + function_to_call + signature.type()));
         }
 
