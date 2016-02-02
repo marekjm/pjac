@@ -1896,6 +1896,9 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    if (args.size() == 2) {
+        compilename = args[1];
+    }
     if (compilename == "") {
         compilename = (filename + ".asm");
     }
