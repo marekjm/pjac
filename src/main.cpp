@@ -1183,6 +1183,13 @@ TokenVectorSize processVariable(const TokenVector& tokens, TokenVectorSize offse
             output << "strstore";
         } else if (var_type == "float") {
             output << "fstore";
+        } else if (var_type == "bool") {
+            // explicitly do nothing
+        } else if (var_type == "auto") {
+            // explicitly do nothing
+        } else {
+            throw InvalidSyntax(offset, ("invalid type of variable " +
+                        var_name + " in function " + scope->function->header() + ": " + var_value));
         }
         if (var_type == "bool") {
             if (var_value == "false" or var_value == "0") {
